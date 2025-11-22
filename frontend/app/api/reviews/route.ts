@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { fal } from "@fal-ai/client";
 
-// Mock data for demonstration purposes since we don't have a live Shopify store with this data
+// Mock data fallback for when Shopify is not available
 const MOCK_REVIEWS = [
     {
         id: "gid://shopify/Metaobject/1",
@@ -32,47 +33,103 @@ const MOCK_REVIEWS = [
 ];
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const productId = searchParams.get('productId');
+  const { searchParams } = new URL(request.url);
+  const productId = searchParams.get('productId');
 
-    // In a real implementation, we would use the Shopify Admin API to fetch metaobjects
-    // filtered by the product ID.
+  if (!productId) {
+    return NextResponse.json({ error: "productId missing" }, { status: 400 });
+  }
 
-    /*
-    const query = `
-      query {
-        metaobjects(type: "product_review", first: 50) {
-          edges {
-            node {
-              id
-              rating: field(key: "rating") { value }
-              title: field(key: "title") { value }
-              body: field(key: "body") { value }
-              product: field(key: "product") { value }
-              authorDisplayName: field(key: "author_display_name") { value }
-              submittedAt: field(key: "submitted_at") { value }
-              appVerificationStatus: field(key: "app_verification_status") { value }
-            }
-          }
-        }
+  // 1. Fetch reviews from Shopify metafields (SPR app)
+  const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+  const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
+
+  let reviews: any[] = [];
+
+  if (shopDomain && accessToken) {
+    const metafieldUrl = `https://${shopDomain}/admin/api/2024-04/products/${productId}/metafields.json?namespace=spr&key=reviews`;
+
+    try {
+      const resp = await fetch(metafieldUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken,
+        },
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Shopify API error ${resp.status}`);
       }
-    `;
-    
-    const response = await fetch(`https://${process.env.SHOPIFY_SHOP_DOMAIN}/admin/api/2024-04/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': process.env.SHOPIFY_ACCESS_TOKEN!,
-      },
-      body: JSON.stringify({ query }),
-    });
-    
-    const data = await response.json();
-    // Filter and map data here...
-    */
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+      const { metafields } = await resp.json();
+      const metafieldValue = metafields?.[0]?.value ?? "";
+      reviews = extractReviewsFromMetafield(metafieldValue);
+    } catch (e) {
+      console.error("Failed to fetch Shopify reviews:", e);
+      // Fall back to mock data
+      console.log("Using mock reviews as fallback");
+      reviews = MOCK_REVIEWS;
+    }
+  } else {
+    console.warn("Shopify credentials missing, using mock data");
+    reviews = MOCK_REVIEWS;
+  }
 
-    return NextResponse.json({ reviews: MOCK_REVIEWS });
+  // 2. Prepare text for AI analysis
+  const reviewsText = reviews
+    .map(
+      (r) => `Rating: ${r.rating}/5\nTitle: ${r.title}\nReview: ${r.body}`
+    )
+    .join("\n\n");
+
+  // 3. Call Fal.ai LLM
+  let aiAnalysis: any = null;
+  if (process.env.FAL_KEY) {
+    try {
+      const result = await fal.subscribe("fal-ai/llama-3-70b-instruct", {
+        input: {
+          prompt: `You are an expert product analyst. Analyze the following customer reviews for a product.\n\nReviews:\n${reviewsText}\n\nProvide a JSON object with the following fields:\n- summary: a concise 1‑2 sentence sentiment summary\n- keywords: an array of 3‑5 short key themes\n- improvement: a sentence describing a key area for improvement, if any.\nReturn ONLY the JSON object, no extra text.`,
+          max_tokens: 512,
+          temperature: 0.1,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS") {
+            update.logs.map((log) => log.message).forEach(console.log);
+          }
+        },
+      });
+
+      let jsonString = result?.data?.output || "{}";
+      jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+      aiAnalysis = JSON.parse(jsonString);
+    } catch (error) {
+      console.error("Fal.ai API error:", error);
+    }
+  }
+
+  // Fallback analysis if AI not available
+  if (!aiAnalysis) {
+    aiAnalysis = {
+      summary: "Customers generally appreciate the design and quality (AI analysis disabled).",
+      keywords: ["Design", "Quality", "Mock Data"],
+      improvement: "Add Fal.ai API key to enable real insights.",
+    };
+  }
+
+  return NextResponse.json({ reviews, analytics: aiAnalysis });
+}
+
+// Helper to extract reviews JSON from metafield HTML.
+function extractReviewsFromMetafield(html: string): any[] {
+  try {
+    const match = html.match(/\[\{[\s\S]*?\}\]/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+  } catch (e) {
+    console.error("Failed to parse reviews from metafield:", e);
+  }
+  return [];
 }
