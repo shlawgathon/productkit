@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, ArrowLeft, Sparkles, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, Image as ImageIcon, FileText, X } from "lucide-react";
 import Link from "next/link";
 
 const steps = [
@@ -20,11 +20,12 @@ const steps = [
 function OnboardingContent() {
   const searchParams = useSearchParams();
   const slug = searchParams.get("slug");
-  
+
   const [currentStep, setCurrentStep] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
   const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
+  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (slug) {
@@ -46,6 +47,16 @@ function OnboardingContent() {
     if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
     }
+  };
+
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setPdfFiles(prev => [...prev, ...Array.from(e.target.files || [])]);
+    }
+  };
+
+  const removePdf = (index: number) => {
+    setPdfFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -89,9 +100,9 @@ function OnboardingContent() {
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Product Name</Label>
-                    <Input 
-                      id="name" 
-                      placeholder="e.g. Minimalist Leather Chair" 
+                    <Input
+                      id="name"
+                      placeholder="e.g. Minimalist Leather Chair"
                       value={productName}
                       onChange={(e) => setProductName(e.target.value)}
                       className="h-12 text-lg"
@@ -99,13 +110,75 @@ function OnboardingContent() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
-                    <Textarea 
-                      id="description" 
-                      placeholder="Describe the materials, style, and key features..." 
+                    <Textarea
+                      id="description"
+                      placeholder="Describe the materials, style, and key features..."
                       className="min-h-[150px] resize-none text-base"
                       value={productDescription}
                       onChange={(e) => setProductDescription(e.target.value)}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Product Guides (PDF)</Label>
+                    <div className="flex flex-col gap-3">
+                      <div className="relative">
+                        <Input
+                          id="pdf-upload"
+                          type="file"
+                          accept=".pdf"
+                          multiple
+                          onChange={handlePdfUpload}
+                          className="hidden"
+                        />
+                        <Label
+                          htmlFor="pdf-upload"
+                          className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-dashed rounded-xl border-muted-foreground/25 hover:bg-muted/50 hover:border-primary/50 cursor-pointer"
+                        >
+                          <div className="flex flex-col items-center space-y-2 text-center">
+                            <div className="p-3 rounded-full bg-primary/5 text-primary">
+                              <FileText className="w-6 h-6" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium">
+                                Click to upload PDF guides
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                or drag and drop files here
+                              </p>
+                            </div>
+                          </div>
+                        </Label>
+                      </div>
+
+                      {pdfFiles.length > 0 && (
+                        <div className="grid gap-2 animate-in fade-in slide-in-from-top-2">
+                          {pdfFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 transition-all border rounded-lg bg-card hover:shadow-sm group">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-red-50 text-red-600">
+                                  <FileText className="w-5 h-5" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm font-medium truncate">{file.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                                  </span>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-8 h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => removePdf(index)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -114,29 +187,46 @@ function OnboardingContent() {
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                   <div className="rounded-lg border bg-card p-6 space-y-4">
                     <div className="flex items-center gap-4">
-                        {files.length > 0 ? (
-                            <div className="h-20 w-20 rounded-md bg-muted overflow-hidden relative">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={URL.createObjectURL(files[0])} alt="Preview" className="object-cover h-full w-full" />
-                            </div>
-                        ) : (
-                            <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                                No Image
-                            </div>
-                        )}
-                        <div>
-                            <h3 className="font-semibold text-lg">{productName || "Untitled Product"}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{productDescription || "No description provided"}</p>
+                      {files.length > 0 ? (
+                        <div className="h-20 w-20 rounded-md bg-muted overflow-hidden relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={URL.createObjectURL(files[0])} alt="Preview" className="object-cover h-full w-full" />
                         </div>
+                      ) : (
+                        <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          No Image
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-semibold text-lg">{productName || "Untitled Product"}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{productDescription || "No description provided"}</p>
+                      </div>
                     </div>
                     <div className="pt-4 border-t flex gap-4 text-sm text-muted-foreground">
-                        <div>
-                            <span className="font-medium text-foreground">{files.length}</span> Images
-                        </div>
-                        <div>
-                            <span className="font-medium text-foreground">Standard</span> Quality
-                        </div>
+                      <div>
+                        <span className="font-medium text-foreground">{files.length}</span> Images
+                      </div>
+                      <div>
+                        <span className="font-medium text-foreground">{pdfFiles.length}</span> PDF Guides
+                      </div>
+                      <div>
+                        <span className="font-medium text-foreground">Standard</span> Quality
+                      </div>
                     </div>
+
+                    {pdfFiles.length > 0 && (
+                      <div className="pt-4 border-t space-y-2">
+                        <h4 className="text-sm font-medium text-muted-foreground">Attached Guides</h4>
+                        <div className="grid gap-2">
+                          {pdfFiles.map((file, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <FileText className="h-4 w-4 text-red-500" />
+                              <span>{file.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -152,13 +242,13 @@ function OnboardingContent() {
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-              
+
               {currentStep === steps.length - 1 ? (
                 <Link href="/status">
-                    <Button size="lg" className="gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all">
+                  <Button size="lg" className="gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all">
                     <Sparkles className="h-4 w-4" />
                     Generate Assets
-                    </Button>
+                  </Button>
                 </Link>
               ) : (
                 <Button onClick={handleNext} size="lg" className="gap-2">
@@ -172,30 +262,30 @@ function OnboardingContent() {
           {/* Right Column: Live Preview / Tips */}
           <div className="hidden lg:block relative">
             <div className="sticky top-32 space-y-6">
-                <div className="rounded-2xl border bg-muted/30 p-8 backdrop-blur-sm">
-                    <h3 className="font-semibold mb-4">Preview</h3>
-                    <div className="aspect-3/4 rounded-xl bg-white shadow-sm border overflow-hidden relative group">
-                        <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/60 z-10 flex flex-col justify-end p-6 text-white">
-                            <h4 className="text-xl font-bold">{productName || "Product Name"}</h4>
-                            <p className="text-sm opacity-80 line-clamp-2">{productDescription || "Product description will appear here..."}</p>
-                        </div>
-                        {files.length > 0 ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img 
-                                src={URL.createObjectURL(files[0])} 
-                                alt="Preview" 
-                                className="object-cover h-full w-full transition-transform duration-700 group-hover:scale-110" 
-                            />
-                        ) : (
-                            <div className="h-full w-full bg-gray-100 flex items-center justify-center text-gray-400">
-                                <ImageIcon className="h-12 w-12 opacity-20" />
-                            </div>
-                        )}
+              <div className="rounded-2xl border bg-muted/30 p-8 backdrop-blur-sm">
+                <h3 className="font-semibold mb-4">Preview</h3>
+                <div className="aspect-3/4 rounded-xl bg-white shadow-sm border overflow-hidden relative group">
+                  <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/60 z-10 flex flex-col justify-end p-6 text-white">
+                    <h4 className="text-xl font-bold">{productName || "Product Name"}</h4>
+                    <p className="text-sm opacity-80 line-clamp-2">{productDescription || "Product description will appear here..."}</p>
+                  </div>
+                  {files.length > 0 ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={URL.createObjectURL(files[0])}
+                      alt="Preview"
+                      className="object-cover h-full w-full transition-transform duration-700 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gray-100 flex items-center justify-center text-gray-400">
+                      <ImageIcon className="h-12 w-12 opacity-20" />
                     </div>
-                    <p className="text-xs text-center text-muted-foreground mt-4">
-                        This is how your product might appear in the gallery.
-                    </p>
+                  )}
                 </div>
+                <p className="text-xs text-center text-muted-foreground mt-4">
+                  This is how your product might appear in the gallery.
+                </p>
+              </div>
             </div>
           </div>
         </div>
