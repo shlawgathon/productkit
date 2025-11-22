@@ -52,18 +52,18 @@ function OnboardingContent() {
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <div className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 max-w-5xl items-center justify-between px-4">
           <Link href="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground">
             Exit
           </Link>
-          <div className="w-64">
+          <div className="w-full max-w-sm">
             <Stepper steps={steps} currentStep={currentStep} />
           </div>
           <div className="w-10" /> {/* Spacer for centering */}
         </div>
       </div>
 
-      <main className="container mx-auto max-w-5xl px-4 pt-24 pb-12">
+      <main className="container mx-auto max-w-5xl px-4 pt-28 pb-12">
         <div className="grid gap-12 lg:grid-cols-2">
           {/* Left Column: Form */}
           <div className="space-y-8">
