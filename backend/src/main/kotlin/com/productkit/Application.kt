@@ -6,6 +6,7 @@ import com.productkit.routes.registerProductRoutes
 import com.productkit.routes.registerSettingsRoutes
 import com.productkit.routes.registerWebsocketRoutes
 import com.productkit.routes.registerAssetGenerationRoutes
+import com.productkit.routes.registerUploadRoutes
 import com.productkit.utils.Config
 import com.productkit.utils.JwtUtil
 import io.ktor.serialization.jackson.*
@@ -87,5 +88,6 @@ fun Application.module() {
         // WebSockets do not require auth for now; can be upgraded later
         registerWebsocketRoutes()
         registerAssetGenerationRoutes()
+        registerUploadRoutes()
     }
 }

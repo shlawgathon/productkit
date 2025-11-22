@@ -1,11 +1,11 @@
 package com.productkit.services
 
 import ai.fal.client.ClientConfig
-import ai.fal.client.CredentialsResolver
-import ai.fal.client.FalClientImpl
 import ai.fal.client.kt.*
 import ai.fal.client.queue.QueueStatus
+import com.productkit.models.ImageData
 import com.productkit.utils.Config
+import kotlinx.serialization.json.Json
 
 class FalService(
     // Official client will handle FAL_KEY automatically from environment
@@ -38,7 +38,7 @@ class FalService(
         baseImage: String,
         type: String,
         count: Int
-    ): List<String> {
+    ): ImageData {
         val prompt = "High-quality $type product photo. Studio lighting. Ecommerce ready."
 
         // Prepare input for the model
@@ -72,12 +72,9 @@ class FalService(
                 }
             }
         }
-
-        println(result.data.toString())
-
         // Extract URLs from the result
         // The response structure may vary based on the model
-        return extractImageUrls(result.data)
+        return Json.decodeFromString<ImageData>(result.data.toString())
     }
 
     /**
@@ -92,14 +89,14 @@ class FalService(
         productId: String,
         embedding: String,
         contexts: List<String>
-    ): List<String> {
-        val results = mutableListOf<String>()
-
+    ): ImageData {
         // Generate variations for each context
-        for (ctx in contexts) {
+        for (ctx in contexts)
+        {
             val prompt = "${ctx.trim()}. Maintain product identity: $embedding"
 
-            try {
+            try
+            {
                 // Using run for simpler operations (no status updates needed)
                 val result = fal.run(
                     endpointId = SEEDREAM_EDIT_MODEL,
@@ -107,15 +104,16 @@ class FalService(
                     options = RunOptions()
                 )
 
-                val urls = extractImageUrls(result.data)
-                results.addAll(urls)
-            } catch (e: Exception) {
+                return Json.decodeFromString<ImageData>(result.data.toString())
+            } catch (e: Exception)
+            {
+                e.printStackTrace()
                 println("Error generating variation for context '$ctx': ${e.message}")
                 // Continue with other contexts even if one fails
             }
         }
 
-        return results
+        throw IllegalStateException("no images gened")
     }
 
     /**
@@ -152,8 +150,8 @@ class FalService(
      */
     suspend fun getBatchResults(
         requestIds: Map<String, String>
-    ): Map<String, List<String>> {
-        val results = mutableMapOf<String, List<String>>()
+    ): Map<String, ImageData> {
+        val results = mutableMapOf<String, ImageData>()
 
         for ((productId, requestId) in requestIds) {
             try {
@@ -162,10 +160,9 @@ class FalService(
                     requestId = requestId
                 )
 
-                results[productId] = extractImageUrls(result.data)
+                results[productId] = Json.decodeFromString<ImageData>(result.data.toString())
             } catch (e: Exception) {
                 println("Error retrieving result for product $productId: ${e.message}")
-                results[productId] = emptyList()
             }
         }
 
@@ -183,34 +180,7 @@ class FalService(
     }
 
     /**
-     * Helper function to extract image URLs from the response data
-     * The structure depends on the model's response format
-     */
-    private fun extractImageUrls(data: Any): List<String> {
-        // The response structure varies by model
-        // For Seedream v4 edit, it typically returns:
-        // { "images": [{"url": "..."}, ...] } or { "image": {"url": "..."} }
-
-        return when (data) {
-            is Map<*, *> -> {
-                // Check for "images" field (array of images)
-                val images = data["images"] as? List<*>
-                if (images != null) {
-                    images.mapNotNull { img ->
-                        (img as? Map<*, *>)?.get("url") as? String
-                    }
-                } else {
-                    // Check for single "image" field
-                    val image = data["image"] as? Map<*, *>
-                    val url = image?.get("url") as? String
-                    if (url != null) listOf(url) else emptyList()
-                }
-            }
-            else -> emptyList()
-        }
-    }
-
-    /**
+     *
      * Data class for batch processing
      */
     data class ProductImageRequest(

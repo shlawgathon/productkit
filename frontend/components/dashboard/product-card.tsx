@@ -57,7 +57,7 @@ export function ProductCard({ product }: ProductCardProps) {
               No Image
             </div>
           )}
-          
+
           {/* Overlay Actions */}
           <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px]">
             <Link href={`/onboarding?slug=${product.slug}`}>
@@ -65,14 +65,14 @@ export function ProductCard({ product }: ProductCardProps) {
                 <Edit className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href={`/products/${product.slug}`}>
+            <Link href={`/products/${product.id}`}>
               <Button size="icon" variant="secondary" className="h-9 w-9 rounded-full">
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </Link>
-            <Button 
-              size="icon" 
-              variant="destructive" 
+            <Button
+              size="icon"
+              variant="destructive"
               className="h-9 w-9 rounded-full"
               onClick={() => setShowDeleteDialog(true)}
             >
@@ -82,7 +82,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
           {/* Status Badge */}
           <div className="absolute top-3 left-3">
-            <Badge 
+            <Badge
               variant="outline"
               className={cn(
                 "shadow-sm backdrop-blur-md bg-white/90 border-0",
@@ -120,7 +120,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete 
+              This action cannot be undone. This will permanently delete
               <span className="font-semibold text-foreground"> {product.name} </span>
               and remove all generated assets from our servers.
             </AlertDialogDescription>

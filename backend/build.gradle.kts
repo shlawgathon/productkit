@@ -53,6 +53,9 @@ dependencies {
     // FAL AI official client
     implementation("ai.fal.client:fal-client-kotlin:0.7.1")
 
+    // AWS
+    implementation("software.amazon.awssdk:s3:2.39.1")
+
     // Testing
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-tests-jvm:2.3.12")

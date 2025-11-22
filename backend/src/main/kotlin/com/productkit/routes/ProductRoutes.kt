@@ -33,10 +33,9 @@ fun Route.registerProductRoutes() {
             call.respond(product)
         }
 
-        post("/create") {
+        post<CreateProductRequest>("/create") { req ->
             val principal = call.principal<JWTPrincipal>()
             val userId = principal?.subject ?: return@post call.respond(HttpStatusCode.Unauthorized)
-            val req = call.receive<CreateProductRequest>()
             if (req.name.isBlank() || req.images.isEmpty()) {
                 return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "name and images are required"))
             }
@@ -52,10 +51,9 @@ fun Route.registerProductRoutes() {
             call.respond(mapOf("productId" to product._id, "status" to product.status.name))
         }
 
-        put("/{productId}") {
+        put<UpdateProductRequest>("/{productId}") { req ->
             val id = call.parameters["productId"] ?: return@put call.respond(HttpStatusCode.BadRequest)
             val existing = productRepo.findById(id) ?: return@put call.respond(HttpStatusCode.NotFound)
-            val req = call.receive<UpdateProductRequest>()
             val updated = existing.copy(
                 name = req.name ?: existing.name,
                 description = req.description ?: existing.description,
