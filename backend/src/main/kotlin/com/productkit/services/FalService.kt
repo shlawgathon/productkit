@@ -30,8 +30,8 @@ class FalService(
      * @param productId Product identifier for tracking
      * @param baseImage URL of the base image to edit
      * @param type Type of product photo (e.g., "lifestyle", "studio", "outdoor")
-     * @param count Number of images to generate (not directly supported by seedream edit, will generate 1)
-     * @return List of generated image URLs
+     * @param count Number of images to generate (will call API multiple times with different prompts)
+     * @return ImageData containing all generated image URLs
      */
     suspend fun generateProductImages(
         productId: String,
@@ -39,43 +39,68 @@ class FalService(
         type: String,
         count: Int
     ): ImageData {
-        val prompt = "High-quality $type product photo. Studio lighting. Ecommerce ready."
-
-        // Prepare input for the model
-        val input = mapOf(
-            "prompt" to prompt,
-            "image_urls" to listOf(baseImage)
-            // Note: Seedream v4 edit doesn't support num_images parameter
-            // If you need multiple variations, you'll need to call multiple times
+        // Define different prompts for variety
+        val prompts = listOf(
+            "Professional studio product photography with clean white background, perfect lighting, high resolution, commercial quality",
+            "Lifestyle product photo in modern minimalist setting, natural lighting, elegant composition, lifestyle magazine style",
+            "Close-up product detail shot highlighting texture and quality, macro photography, sharp focus, premium look",
+            "Product in outdoor natural environment, beautiful scenery background, golden hour lighting, atmospheric",
+            "Product in use demonstration, real-world context, lifestyle photography, authentic setting, professional quality"
         )
 
-        // Using subscribe for real-time updates (recommended for longer operations)
-        val result = fal.subscribe(
-            endpointId = SEEDREAM_EDIT_MODEL,
-            input = input,
-            options = SubscribeOptions(logs = true)
-        ) { update ->
-            // Handle status updates if needed
-            when (update) {
-                is QueueStatus.InProgress -> {
-                    // You can log progress here if needed
-                    println("Processing: ${update.logs}")
-                }
-                is QueueStatus.Completed -> {
+        val allImages = mutableListOf<com.productkit.models.Image>()
+        var lastSeed: Long = 0
 
-                    println("Completed processing for product: $productId ${
-                        update.logs
-                    }")
+        // Generate images with different prompts
+        for (i in 0 until minOf(count, prompts.size)) {
+            try {
+                val prompt = prompts[i]
+                println("[FalService] Generating image ${i + 1}/$count for product $productId with prompt: ${prompt.take(50)}...")
+
+                // Prepare input for the model
+                val input = mapOf(
+                    "prompt" to prompt,
+                    "image_urls" to listOf(baseImage),
+                    "seed" to (lastSeed + i + 1) // Use different seeds for variety
+                )
+
+                // Using subscribe for real-time updates
+                val result = fal.subscribe(
+                    endpointId = SEEDREAM_EDIT_MODEL,
+                    input = input,
+                    options = SubscribeOptions(logs = true)
+                ) { update ->
+                    when (update) {
+                        is QueueStatus.InProgress -> {
+                            println("[FalService] Processing image ${i + 1}: ${update.logs}")
+                        }
+                        is QueueStatus.Completed -> {
+                            println("[FalService] Completed image ${i + 1} for product: $productId")
+                        }
+                        else -> {
+                            // Handle other status types if needed
+                        }
+                    }
                 }
-                else -> {
-                    // Handle other status types if needed
-                }
+
+                // Extract URLs from the result
+                val imageData = Json.decodeFromString<ImageData>(result.data.toString())
+                allImages.addAll(imageData.images)
+                lastSeed = imageData.seed
+
+                println("[FalService] Successfully generated image ${i + 1}/$count")
+            } catch (e: Exception) {
+                println("[FalService] Failed to generate image ${i + 1}: ${e.message}")
+                e.printStackTrace()
+                // Continue with other images even if one fails
             }
         }
 
-        // Extract URLs from the result
-        // The response structure may vary based on the model
-        return Json.decodeFromString<ImageData>(result.data.toString())
+        // Return combined results
+        return ImageData(
+            images = allImages,
+            seed = lastSeed
+        )
     }
 
     /**

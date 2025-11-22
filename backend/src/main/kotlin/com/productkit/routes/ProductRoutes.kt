@@ -54,7 +54,7 @@ fun Route.registerProductRoutes() {
                 product._id,
                 com.productkit.jobs.GenerationRequest(
                     assetTypes = listOf("hero"),
-                    count = mapOf("hero" to 4)
+                    count = mapOf("hero" to 5)
                 )
             )
 
