@@ -7,6 +7,7 @@ import { ArrowLeft, Download, Share2, Edit, MoreHorizontal, Copy, Check, Trash2,
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
+import GlbViewer from "@/components/dashboard/GlbViewer";
 
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
