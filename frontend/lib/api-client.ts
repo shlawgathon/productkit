@@ -131,6 +131,14 @@ class ApiClient {
         this.clearTokens();
     }
 
+    public async getUser() {
+        return this.request<any>('/api/auth/me');
+    }
+
+    public async checkValid() {
+        return this.request<any>('/api/auth/valid');
+    }
+
     // Products
     public async getProducts() {
         return this.request<any>('/api/products');
