@@ -18,7 +18,6 @@ private val userRepo = UserRepository()
 
 data class AuthRequest(val email: String, val password: String)
 data class RefreshRequest(val refreshToken: String)
-class LogoutRequest
 
 data class UpdateProfileRequest(
     val firstName: String? = null,
@@ -73,7 +72,7 @@ fun Routing.registerAuthRoutes() {
             call.respond(mapOf("token" to token, "refreshToken" to refresh))
         }
 
-        post<LogoutRequest>("/logout") {
+        post("/logout") {
             // With stateless JWT, "logout" is a client-side operation or server-side token blacklist (not implemented)
             call.respond(mapOf("success" to true))
         }
@@ -90,7 +89,7 @@ fun Routing.registerAuthRoutes() {
                 val principal = call.principal<JWTPrincipal>()
                 val userId = principal?.subject ?: return@put call.respond(HttpStatusCode.Unauthorized)
                 println("Updating profile for user: $userId with data: $req")
-                
+
                 val existing = userRepo.findById(userId) ?: return@put call.respond(HttpStatusCode.NotFound)
 
                 val updated = existing.copy(

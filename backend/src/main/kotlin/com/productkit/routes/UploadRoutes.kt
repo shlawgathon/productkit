@@ -20,7 +20,7 @@ import java.util.UUID
 
 fun Route.registerUploadRoutes() {
     authenticate("auth-jwt") {
-        post<Unit>("/api/upload") {
+        post("/api/upload") {
             println("Upload request received")
             val multipart = call.receiveMultipart()
             var fileUrl: String? = null
@@ -55,7 +55,7 @@ fun Route.registerUploadRoutes() {
 
                             s3.putObject(request, RequestBody.fromBytes(fileBytes))
                             println("Upload successful.")
-                            
+
                             // Let's construct it safely.
                             fileUrl = "${Config.DO_SPACES_ENDPOINT}/$fileName"
                             // Fix double slash if endpoint has trailing slash

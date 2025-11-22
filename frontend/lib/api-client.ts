@@ -201,7 +201,9 @@ class ApiClient {
         formData.append('file', file);
 
         const url = `${BASE_URL}/api/upload`;
-        const headers: Record<string, string> = {};
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+        };
         if (this.accessToken) {
             headers['Authorization'] = `Bearer ${this.accessToken}`;
         }
