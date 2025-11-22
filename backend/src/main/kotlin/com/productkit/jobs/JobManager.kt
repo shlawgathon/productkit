@@ -1,5 +1,6 @@
 package com.productkit.jobs
 
+import ai.fal.client.kt.subscribe
 import com.productkit.models.ImageData
 import com.productkit.models.Product
 import com.productkit.models.ProductStatus
@@ -11,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -80,9 +82,103 @@ object JobManager {
                     status.progress = 70
                 }
 
-                // Update product minimal state
-                val updated: Product = product.copy(status = ProductStatus.COMPLETED, updatedAt = System.currentTimeMillis())
+                // Generate marketing copy using Fal AI
+                println("[JOB_PROCESSING] Generating marketing copy for product $productId")
+                var productCopy: com.productkit.models.ProductCopy? = null
+                try {
+                    val copyPrompt = """
+                        You are an expert marketing copywriter. Create compelling product marketing copy for the following product.
+                        
+                        Product Name: ${product.name}
+                        Product Description: ${product.description ?: "No description provided"}
+                        
+                        Generate a JSON object with the following fields:
+                        - headline: A catchy, attention-grabbing headline (max 60 characters)
+                        - subheadline: A compelling subheadline that expands on the headline (max 120 characters)
+                        - description: A detailed product description (2-3 sentences, max 300 characters)
+                        - features: An array of 3-5 key product features (each max 50 characters)
+                        - benefits: An array of 3-5 customer benefits (each max 50 characters)
+                        
+                        Return ONLY the JSON object, no extra text.
+                    """.trimIndent()
+
+                    val result = fal.fal.subscribe(
+                        endpointId = "fal-ai/llama-3-70b-instruct",
+                        input = mapOf(
+                            "prompt" to copyPrompt,
+                            "max_tokens" to 1024,
+                            "temperature" to 0.7
+                        ),
+                        options = ai.fal.client.kt.SubscribeOptions(logs = true)
+                    ) { update ->
+                        println("[JOB_PROCESSING] Marketing copy generation: $update")
+                    }
+
+                    var jsonString = result.data.toString()
+                        .replace("```json", "")
+                        .replace("```", "")
+                        .trim()
+
+                    // Try to extract just the JSON object if there's extra text
+                    val jsonMatch = Regex("""\{[\s\S]*?\}""").find(jsonString)
+                    if (jsonMatch != null) {
+                        jsonString = jsonMatch.value
+                    }
+
+                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    val copyData = json.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(jsonString)
+
+                    productCopy = com.productkit.models.ProductCopy(
+                        headline = copyData["headline"]?.toString()?.trim('"') ?: "",
+                        subheadline = copyData["subheadline"]?.toString()?.trim('"') ?: "",
+                        description = copyData["description"]?.toString()?.trim('"') ?: "",
+                        features = copyData["features"]?.let {
+                            kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
+                        } ?: emptyList(),
+                        benefits = copyData["benefits"]?.let {
+                            kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
+                        } ?: emptyList()
+                    )
+
+                    println("[JOB_PROCESSING] Generated marketing copy: ${productCopy.headline}")
+                } catch (e: Exception) {
+                    println("[JOB_PROCESSING] Failed to generate marketing copy: ${e.message}")
+                    e.printStackTrace()
+                    // Use fallback copy
+                    productCopy = com.productkit.models.ProductCopy(
+                        headline = product.name,
+                        subheadline = "Discover the perfect ${product.name}",
+                        description = product.description ?: "A premium product designed for you.",
+                        features = listOf("High Quality", "Durable", "Stylish"),
+                        benefits = listOf("Long-lasting", "Great Value", "Customer Favorite")
+                    )
+                }
+                status.progress = 85
+
+                // Build GeneratedAssets from the generated data
+                val existingAssets = product.generatedAssets
+                val heroImageUrls = imageData?.images?.map { it.url } ?: emptyList()
+
+                val generatedAssets = com.productkit.models.GeneratedAssets(
+                    heroImages = if (heroImageUrls.isNotEmpty()) heroImageUrls else (existingAssets?.heroImages ?: emptyList()),
+                    lifestyleImages = existingAssets?.lifestyleImages ?: emptyList(),
+                    detailImages = existingAssets?.detailImages ?: emptyList(),
+                    product360Views = existingAssets?.product360Views ?: emptyList(),
+                    productCopy = productCopy ?: (existingAssets?.productCopy ?: com.productkit.models.ProductCopy("", "", "", emptyList(), emptyList())),
+                    technicalSpecs = existingAssets?.technicalSpecs ?: emptyMap(),
+                    siteUrl = existingAssets?.siteUrl,
+                    arModelUrl = assets3d ?: existingAssets?.arModelUrl
+                )
+
+                // Update product with generated assets and completed status
+                val updated: Product = product.copy(
+                    status = ProductStatus.COMPLETED,
+                    generatedAssets = generatedAssets,
+                    updatedAt = System.currentTimeMillis()
+                )
                 productRepo.update(updated)
+
+                println("[JOB_PROCESSING] Updated product $productId with ${heroImageUrls.size} hero images, 3D model: ${assets3d != null}, and marketing copy")
 
                 status.generatedAssets = imageData
                 status.generated3dAssets = assets3d

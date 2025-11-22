@@ -20,8 +20,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       try {
         const data = await api.getProduct(id);
         setProduct(data);
-        if (data.originalImages && data.originalImages.length > 0) {
-          setActiveImage(data.originalImages[0]);
+        // Set active image to first generated hero image, or first original image
+        const firstImage = data.generatedAssets?.heroImages?.[0] || data.originalImages?.[0];
+        if (firstImage) {
+          setActiveImage(firstImage);
         }
       } catch (error) {
         console.error("Failed to fetch product", error);
@@ -81,6 +83,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     return <div className="p-8 text-center">Product not found</div>;
   }
 
+  // Combine original and generated images for the gallery
+  const allImages = [
+    ...(product.generatedAssets?.heroImages || []),
+    ...(product.originalImages || [])
+  ];
+
   return (
     <div className="space-y-8 pb-20">
       {/* Header */}
@@ -130,7 +138,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             )}
           </div>
           <div className="grid grid-cols-4 gap-4">
-            {product.originalImages?.map((image: string, index: number) => (
+            {allImages.map((image: string, index: number) => (
               <div
                 key={index}
                 className={`aspect-square relative overflow-hidden rounded-lg border cursor-pointer transition-all ${activeImage === image ? 'ring-2 ring-primary ring-offset-2' : 'hover:opacity-80'}`}
@@ -142,6 +150,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   fill
                   className="object-cover"
                 />
+                {index < (product.generatedAssets?.heroImages?.length || 0) && (
+                  <div className="absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded">
+                    AI
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -237,7 +250,34 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
             <h3 className="font-semibold mb-4">Generated Assets</h3>
             <div className="space-y-3">
-              {/* Placeholder for assets - populate from product.generatedAssets if available */}
+              {/* Hero Images */}
+              {product.generatedAssets?.heroImages && product.generatedAssets.heroImages.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Hero Images ({product.generatedAssets.heroImages.length})</p>
+                  {product.generatedAssets.heroImages.map((imageUrl: string, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                          IMG
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Hero Image {idx + 1}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">{imageUrl}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" asChild>
+                          <a href={imageUrl} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* AR Model */}
               {product.generatedAssets?.arModelUrl && (
                 <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                   <div className="flex items-center gap-3">
@@ -260,23 +300,85 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   </div>
                 </div>
               )}
-              {!product.generatedAssets?.arModelUrl && (
-                <p className="text-sm text-muted-foreground">No assets generated yet.</p>
-              )}
+
+              {/* No assets message */}
+              {(!product.generatedAssets?.heroImages || product.generatedAssets.heroImages.length === 0) &&
+                !product.generatedAssets?.arModelUrl && (
+                  <p className="text-sm text-muted-foreground">No assets generated yet.</p>
+                )}
             </div>
           </div>
 
-          {product.generatedAssets?.productCopy && (
+          {/* Marketing Copy Section */}
+          {product.generatedAssets?.productCopy && product.generatedAssets.productCopy.headline && (
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">Marketing Copy</h3>
-                <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(product.generatedAssets.productCopy.description)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={() => handleCopy(
+                    `${product.generatedAssets.productCopy.headline}\n\n${product.generatedAssets.productCopy.subheadline}\n\n${product.generatedAssets.productCopy.description}`
+                  )}
+                >
                   {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? "Copied" : "Copy All"}
                 </Button>
               </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-sm italic text-muted-foreground">
-                "{product.generatedAssets.productCopy.description}"
+
+              <div className="space-y-4">
+                {/* Headline */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Headline</p>
+                  <p className="text-lg font-bold">{product.generatedAssets.productCopy.headline}</p>
+                </div>
+
+                {/* Subheadline */}
+                {product.generatedAssets.productCopy.subheadline && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Subheadline</p>
+                    <p className="text-sm font-medium text-muted-foreground">{product.generatedAssets.productCopy.subheadline}</p>
+                  </div>
+                )}
+
+                {/* Description */}
+                {product.generatedAssets.productCopy.description && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm leading-relaxed">{product.generatedAssets.productCopy.description}</p>
+                  </div>
+                )}
+
+                {/* Features */}
+                {product.generatedAssets.productCopy.features && product.generatedAssets.productCopy.features.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Features</p>
+                    <ul className="space-y-1">
+                      {product.generatedAssets.productCopy.features.map((feature: string, idx: number) => (
+                        <li key={idx} className="text-sm flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Benefits */}
+                {product.generatedAssets.productCopy.benefits && product.generatedAssets.productCopy.benefits.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Benefits</p>
+                    <ul className="space-y-1">
+                      {product.generatedAssets.productCopy.benefits.map((benefit: string, idx: number) => (
+                        <li key={idx} className="text-sm flex items-start gap-2">
+                          <span className="text-green-600 mt-0.5">✓</span>
+                          <span>{benefit}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           )}

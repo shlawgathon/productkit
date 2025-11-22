@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
 
 class FalService(
     // Official client will handle FAL_KEY automatically from environment
-    private val fal: FalClient = createFalClient(
+    val fal: FalClient = createFalClient(
         ClientConfig.withCredentials {
             Config.FAL_API_KEY
         }
@@ -72,6 +72,7 @@ class FalService(
                 }
             }
         }
+
         // Extract URLs from the result
         // The response structure may vary based on the model
         return Json.decodeFromString<ImageData>(result.data.toString())
