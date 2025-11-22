@@ -7,6 +7,7 @@ const products: Product[] = [
   {
     id: "1",
     name: "Minimalist Chair",
+    slug: "minimalist-chair",
     status: "active",
     thumbnailUrl: "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&q=80&w=1000",
     lastModified: "2 mins ago",
@@ -14,6 +15,7 @@ const products: Product[] = [
   {
     id: "2",
     name: "Smart Watch",
+    slug: "smart-watch",
     status: "generating",
     thumbnailUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=1000",
     lastModified: "1 hour ago",
@@ -21,6 +23,7 @@ const products: Product[] = [
   {
     id: "3",
     name: "Wireless Headphones",
+    slug: "wireless-headphones",
     status: "draft",
     thumbnailUrl: "",
     lastModified: "1 day ago",

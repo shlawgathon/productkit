@@ -16,11 +16,7 @@ const navItems = [
     href: "/onboarding",
     icon: PlusCircle,
   },
-  {
-    title: "Status",
-    href: "/status",
-    icon: Activity,
-  },
+
   {
     title: "Assets",
     href: "/assets",

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Stepper } from "@/components/onboarding/stepper";
 import { UploadZone } from "@/components/onboarding/upload-zone";
 import { Button } from "@/components/ui/button";
@@ -11,16 +12,29 @@ import { ArrowRight, ArrowLeft, Sparkles, Image as ImageIcon } from "lucide-reac
 import Link from "next/link";
 
 const steps = [
-  { id: "upload", title: "Upload Images" },
+  { id: "upload", title: "Upload Header Image" },
   { id: "details", title: "Product Details" },
   { id: "review", title: "Review" },
 ];
 
-export default function OnboardingPage() {
+function OnboardingContent() {
+  const searchParams = useSearchParams();
+  const slug = searchParams.get("slug");
+  
   const [currentStep, setCurrentStep] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
   const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
+
+  useEffect(() => {
+    if (slug) {
+      // Mock fetching data based on slug
+      const name = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+      setProductName(name);
+      setProductDescription("A sleek, modern minimalist chair designed for comfort and style. Features premium leather upholstery and a solid oak frame. Perfect for contemporary living spaces and offices.");
+      // In a real app, we would also fetch existing images here
+    }
+  }, [slug]);
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -60,7 +74,7 @@ export default function OnboardingPage() {
                 {currentStep === 2 && "Ready to generate?"}
               </h1>
               <p className="text-muted-foreground">
-                {currentStep === 0 && "Upload high-quality images of your product from different angles."}
+                {currentStep === 0 && "Upload a high-quality header image for your product. You can add more gallery images later."}
                 {currentStep === 1 && "Provide details to help our AI understand your product context."}
                 {currentStep === 2 && "Review your information before we start the magic."}
               </p>
@@ -187,5 +201,13 @@ export default function OnboardingPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OnboardingContent />
+    </Suspense>
   );
 }
