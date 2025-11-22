@@ -1,22 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const redirect = searchParams.get("redirect") || "/dashboard";
+
   // TODO: Add form submission handler for MongoDB integration
   // Example structure:
   // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   //   e.preventDefault();
   //   const formData = new FormData(e.currentTarget);
-  //   const email = formData.get("email") as string;
+  //   const username = formData.get("username") as string;
   //   const password = formData.get("password") as string;
   //   
   //   // MongoDB integration will go here
-  //   // await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+  //   // const response = await fetch('/api/auth/login', { 
+  //   //   method: 'POST', 
+  //   //   body: JSON.stringify({ username, password }) 
+  //   // });
+  //   // const { token } = await response.json();
+  //   // document.cookie = `auth-token=${token}; path=/; max-age=3600`;
+  //   // router.push(redirect);
   // };
 
   return (
@@ -51,16 +63,16 @@ export default function LoginPage() {
           // TODO: Add onSubmit handler when implementing MongoDB integration
           // onSubmit={handleSubmit}
         >
-          <div className="space-y-4 rounded-md shadow-sm">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 required
-                placeholder="name@example.com"
+                placeholder="johndoe"
                 // TODO: Add onChange handler for real-time validation if needed
               />
             </div>
@@ -84,8 +96,9 @@ export default function LoginPage() {
             onClick={(e) => {
               // Placeholder - prevent default form submission
               e.preventDefault();
-              console.log("Login clicked");
+              console.log("Login clicked - will redirect to:", redirect);
               // TODO: Replace with actual form submission handler
+              // After successful login, redirect to the intended destination
             }}
           >
             Sign in
@@ -100,6 +113,18 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
 

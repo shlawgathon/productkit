@@ -51,7 +51,7 @@ export default function SignUpPage() {
           // TODO: Add onSubmit handler when implementing MongoDB integration
           // onSubmit={handleSubmit}
         >
-          <div className="space-y-4 rounded-md shadow-sm">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -66,9 +66,6 @@ export default function SignUpPage() {
                 placeholder="johndoe"
                 // TODO: Add onChange handler for real-time validation if needed
               />
-              <p className="text-xs text-muted-foreground">
-                Username must be 3-20 characters and contain only letters, numbers, and underscores
-              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -82,9 +79,6 @@ export default function SignUpPage() {
                 placeholder="••••••••"
                 // TODO: Add onChange handler for password strength validation if needed
               />
-              <p className="text-xs text-muted-foreground">
-                Password must be at least 8 characters long
-              </p>
             </div>
           </div>
 
