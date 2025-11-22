@@ -49,8 +49,7 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation-jvm:3.3.2")
     implementation("io.ktor:ktor-client-logging-jvm:3.3.2")
     implementation("io.ktor:ktor-client-auth-jvm:3.3.2")
-    // shopify
-    implementation("com.channelape:shopify-sdk:2.9.3")
+
 
     // FAL AI official client
     implementation("ai.fal.client:fal-client-kotlin:0.7.1")

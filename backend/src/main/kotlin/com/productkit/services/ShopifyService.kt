@@ -2,12 +2,20 @@ package com.productkit.services
 
 import com.productkit.models.GeneratedAssets
 import com.productkit.models.Product
-import com.shopify.ShopifySdk
-import com.shopify.model.Image
-import com.shopify.model.ShopifyProduct
-import com.shopify.model.ShopifyProductCreationRequest
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.*
 
 class ShopifyService {
+    private val client = HttpClient(CIO)
+    private val json = Json { 
+        ignoreUnknownKeys = true
+        prettyPrint = true
+    }
 
     data class ShopifyProductResult(
         val id: String,
@@ -15,19 +23,15 @@ class ShopifyService {
         val url: String
     )
 
-    fun createProduct(product: Product, assets: GeneratedAssets, shopDomain: String, accessToken: String): ShopifyProductResult? {
+    @Serializable
+    data class GraphQLRequest(
+        val query: String,
+        val variables: JsonObject? = null
+    )
+
+    suspend fun createProduct(product: Product, assets: GeneratedAssets, shopDomain: String, accessToken: String): ShopifyProductResult? {
         if (shopDomain.isBlank() || accessToken.isBlank()) {
             println("[SHOPIFY] Missing credentials, skipping product creation")
-            return null
-        }
-
-        val shopifySdk = try {
-            ShopifySdk.newBuilder()
-                .withSubdomain(shopDomain)
-                .withAccessToken(accessToken)
-                .build()
-        } catch (e: Exception) {
-            println("[SHOPIFY] Failed to initialize SDK: ${e.message}")
             return null
         }
 
@@ -41,7 +45,7 @@ class ShopifyService {
                 if (assets.productCopy.features.isNotEmpty()) {
                     append("<h3>Features</h3><ul>")
                     assets.productCopy.features.forEach { feature ->
-                        append("<li>$feature</li>")
+                        append("<li>${feature.replace("\"", "&quot;")}</li>")
                     }
                     append("</ul>")
                 }
@@ -49,36 +53,79 @@ class ShopifyService {
                 if (assets.productCopy.benefits.isNotEmpty()) {
                     append("<h3>Benefits</h3><ul>")
                     assets.productCopy.benefits.forEach { benefit ->
-                        append("<li>$benefit</li>")
+                        append("<li>${benefit.replace("\"", "&quot;")}</li>")
                     }
                     append("</ul>")
                 }
             }
 
-            val createdProduct = shopifySdk.createProduct(
-                ShopifyProductCreationRequest.newBuilder()
-                    .withTitle(product.name)
-                    .withMetafieldsGlobalTitleTag(product.name)
-                    .withProductType("Generated Product")
-                    .withBodyHtml(descriptionHtml)
-                    .withMetafieldsGlobalDescriptionTag(product.description)
-                    .withVendor("ProductKit")
-                    .withTags(setOf("productkit"))
-                    .withSortedOptionNames(listOf())
-                    .withImageSources(assets.heroImages)
-                    .withVariantCreationRequests(listOf())
-                    .withPublished(true)
-                    .build()
-            )
+            // Build GraphQL mutation for product creation
+            val mutation = """
+                mutation {
+                  productCreate(product: {
+                    title: "${product.name.replace("\"", "\\\"")}",
+                    descriptionHtml: "${descriptionHtml.replace("\"", "\\\"").replace("\n", "\\n")}",
+                    productType: "Generated Product",
+                    vendor: "ProductKit",
+                    status: ACTIVE,
+                    tags: ["productkit"]
+                  }) {
+                    product {
+                      id
+                      title
+                      handle
+                      onlineStoreUrl
+                    }
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+            """.trimIndent()
 
-            val shopUrl = "https://${shopDomain}.myshopify.com/products/${createdProduct.id}"
+            val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
+            
+            val response: HttpResponse = client.post(apiUrl) {
+                contentType(ContentType.Application.Json)
+                header("X-Shopify-Access-Token", accessToken)
+                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(mutation)))
+            }
 
-            println("[SHOPIFY] Product created successfully: ${createdProduct.id} ($shopUrl)")
+            val responseBody = response.bodyAsText()
+            println("[SHOPIFY] Response: $responseBody")
+
+            val responseJson = json.parseToJsonElement(responseBody).jsonObject
+            val data = responseJson["data"]?.jsonObject
+            val productCreate = data?.get("productCreate")?.jsonObject
+            val userErrors = productCreate?.get("userErrors")?.jsonArray
+
+            if (userErrors != null && userErrors.isNotEmpty()) {
+                println("[SHOPIFY] User errors:")
+                userErrors.forEach { error ->
+                    val errorObj = error.jsonObject
+                    println("  - ${errorObj["field"]?.jsonPrimitive?.content}: ${errorObj["message"]?.jsonPrimitive?.content}")
+                }
+                return null
+            }
+
+            val productData = productCreate?.get("product")?.jsonObject
+            if (productData == null) {
+                println("[SHOPIFY] No product data in response")
+                return null
+            }
+
+            val productId = productData["id"]?.jsonPrimitive?.content ?: return null
+            val handle = productData["handle"]?.jsonPrimitive?.content ?: ""
+            val onlineStoreUrl = productData["onlineStoreUrl"]?.jsonPrimitive?.content 
+                ?: "https://${shopDomain}/products/$handle"
+
+            println("[SHOPIFY] Product created successfully: $productId ($onlineStoreUrl)")
 
             return ShopifyProductResult(
-                id = createdProduct.id.toString(),
-                handle = createdProduct.id,
-                url = shopUrl
+                id = productId,
+                handle = handle,
+                url = onlineStoreUrl
             )
         } catch (e: Exception) {
             println("[SHOPIFY] Failed to create Shopify product: ${e.message}")
@@ -96,36 +143,29 @@ class ShopifyService {
         val createdAt: String?
     )
 
-    fun getProductReviews(shopifyProductId: String, shopDomain: String, accessToken: String): List<ShopifyReview> {
+    suspend fun getProductReviews(shopifyProductId: String, shopDomain: String, accessToken: String): List<ShopifyReview> {
         if (shopDomain.isBlank() || accessToken.isBlank()) {
             println("[SHOPIFY] Missing credentials, cannot fetch reviews")
-            return emptyList()
-        }
-
-        val shopifySdk = try {
-            ShopifySdk.newBuilder()
-                .withSubdomain(shopDomain)
-                .withAccessToken(accessToken)
-                .build()
-        } catch (e: Exception) {
-            println("[SHOPIFY] Failed to initialize SDK: ${e.message}")
             return emptyList()
         }
 
         return try {
             println("[SHOPIFY] Fetching reviews for product $shopifyProductId from $shopDomain...")
             
-            // Note: The Shopify SDK may not have direct review support as reviews are often
-            // handled by third-party apps. This is a placeholder implementation.
-            // You may need to use the Shopify GraphQL API or a specific review app's API.
+            // Note: Reviews are typically handled by third-party apps in Shopify
+            // This would require integration with specific review app APIs
+            // Common apps: Judge.me, Yotpo, Loox, etc.
             
-            // For now, returning empty list as the SDK doesn't have built-in review support
-            println("[SHOPIFY] Note: Review fetching requires Shopify GraphQL API or review app integration")
+            println("[SHOPIFY] Note: Review fetching requires integration with a specific review app API")
             emptyList()
         } catch (e: Exception) {
             println("[SHOPIFY] Failed to fetch reviews: ${e.message}")
             e.printStackTrace()
             emptyList()
         }
+    }
+
+    fun close() {
+        client.close()
     }
 }

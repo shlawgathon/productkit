@@ -17,11 +17,43 @@ class FalService(
 ) {
     companion object {
         // Seedream v4 edit model endpoint
-        private const val SEEDREAM_EDIT_MODEL = "fal-ai/bytedance/seedream/v4/edit"
+        private const val IMAGE_EDIT_MODEL = "fal-ai/beta-image-232/edit"
+        private const val IMAGE_UNDERSTAND_MODEL = "fal-ai/bagel/understand"
+        private const val TEXT_LLM = "fal-ai/llama-3-70b-instruct"
+    }
 
-        // You can also use other models like:
-        // private const val FLUX_MODEL = "fal-ai/flux/dev"
-        // private const val SDXL_MODEL = "fal-ai/fast-sdxl"
+
+    // Helper to understand image content using bagel/understand model
+    private suspend fun understandImage(imageUrl: String): String {
+        val input = mapOf(
+            "image_url" to imageUrl,
+            "prompt" to "What is shown in the image?"
+        )
+        val result = fal.run(
+            endpointId = IMAGE_UNDERSTAND_MODEL,
+            input = input,
+            options = RunOptions()
+        )
+        val jsonStr = result.data.toString()
+        val regex = Regex("\\\"text\\\":\\\"([^\\\"]+)\\\"")
+        val match = regex.find(jsonStr)
+        return match?.groupValues?.get(1) ?: ""
+    }
+
+    // Helper to generate marketing prompts from description using Llama 3 model
+    private suspend fun generatePromptsFromDescription(description: String): List<String> {
+        if (description.isBlank()) return emptyList()
+        val prompt = "Based on the following description, generate five concise marketing copy prompts for product images. Return each prompt on a separate line.\nDescription: $description"
+        val result = fal.run(
+            endpointId = TEXT_LLM,
+            input = mapOf("prompt" to prompt),
+            options = RunOptions()
+        )
+        val text = result.data.toString()
+        val regex = Regex("\\\"text\\\":\\\"([^\\\"]+)\\\"")
+        val match = regex.find(text)
+        val generated = match?.groupValues?.get(1) ?: ""
+        return generated.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     /**
@@ -39,15 +71,19 @@ class FalService(
         type: String,
         count: Int
     ): ImageData {
-        // Define different prompts for variety
-        val prompts = listOf(
+        // Dynamically generate prompts based on the image content
+        // First, understand the image using the bagel/understand model
+        val understoodDescription = understandImage(baseImage)
+        // Then, generate marketing prompts using a Llama 3 model
+        val generatedPrompts = generatePromptsFromDescription(understoodDescription)
+        // Ensure we have at least some prompts; fallback to default if needed
+        val prompts = if (generatedPrompts.isNotEmpty()) generatedPrompts else listOf(
             "Professional studio product photography with clean white background, perfect lighting, high resolution, commercial quality",
             "Lifestyle product photo in modern minimalist setting, natural lighting, elegant composition, lifestyle magazine style",
             "Close-up product detail shot highlighting texture and quality, macro photography, sharp focus, premium look",
             "Product in outdoor natural environment, beautiful scenery background, golden hour lighting, atmospheric",
             "Product in use demonstration, real-world context, lifestyle photography, authentic setting, professional quality"
         )
-
         val allImages = mutableListOf<com.productkit.models.Image>()
         var lastSeed: Long = 0
 
@@ -66,7 +102,7 @@ class FalService(
 
                 // Using subscribe for real-time updates
                 val result = fal.subscribe(
-                    endpointId = SEEDREAM_EDIT_MODEL,
+                    endpointId = IMAGE_EDIT_MODEL,
                     input = input,
                     options = SubscribeOptions(logs = true)
                 ) { update ->
@@ -125,7 +161,7 @@ class FalService(
             {
                 // Using run for simpler operations (no status updates needed)
                 val result = fal.run(
-                    endpointId = SEEDREAM_EDIT_MODEL,
+                    endpointId = IMAGE_EDIT_MODEL,
                     input = mapOf("prompt" to prompt),
                     options = RunOptions()
                 )
@@ -159,7 +195,7 @@ class FalService(
             )
 
             val submission = fal.queue.submit(
-                endpointId = SEEDREAM_EDIT_MODEL,
+                endpointId = IMAGE_EDIT_MODEL,
                 input = input,
                 options = SubmitOptions(webhookUrl = request.webhookUrl),
                 // Optional webhook for async notifications
@@ -222,7 +258,7 @@ class FalService(
         for ((productId, requestId) in requestIds) {
             try {
                 val result = fal.queue.result(
-                    endpointId = SEEDREAM_EDIT_MODEL,
+                    endpointId = IMAGE_EDIT_MODEL,
                     requestId = requestId
                 )
 
@@ -240,7 +276,7 @@ class FalService(
      */
     suspend fun checkRequestStatus(requestId: String): QueueStatus.StatusUpdate {
         return fal.queue.status(
-            endpointId = SEEDREAM_EDIT_MODEL,
+            endpointId = IMAGE_EDIT_MODEL,
             requestId = requestId
         )
     }
