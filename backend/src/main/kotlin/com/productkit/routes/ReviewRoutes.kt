@@ -21,9 +21,9 @@ fun Route.registerReviewRoutes() {
         get {
             val principal = call.principal<JWTPrincipal>()
             val userId = principal?.subject ?: return@get call.respond(HttpStatusCode.Unauthorized)
-            
+
             val productId = call.request.queryParameters["productId"]
-            
+
             if (productId.isNullOrBlank()) {
                 return@get call.respond(
                     HttpStatusCode.BadRequest,
@@ -36,8 +36,8 @@ fun Route.registerReviewRoutes() {
                 val user = userRepo.findById(userId)
                 val shopDomain = user?.shopifyStoreUrl
                 val accessToken = user?.shopifyAccessToken
-                
-                val response = shopifyService.getProductReviews(productId, shopDomain, accessToken)
+
+                val response = shopifyService.getProductReviews(productId, shopDomain!!, accessToken = accessToken!!)
                 call.respond(HttpStatusCode.OK, response)
             } catch (e: Exception) {
                 println("[ReviewRoutes] Error fetching reviews: ${e.message}")

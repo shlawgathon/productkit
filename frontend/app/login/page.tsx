@@ -41,7 +41,7 @@ function LoginForm() {
 
   const handleGuestMode = () => {
     console.log("🚧 DEV MODE: Accessing as guest");
-    
+
     // Set a fake token to bypass middleware and auth checks
     document.cookie = "auth-token=dev-bypass-token; path=/";
     localStorage.setItem('accessToken', 'dev-bypass-token');
@@ -51,7 +51,7 @@ function LoginForm() {
       firstName: 'Guest',
       lastName: 'User'
     }));
-    
+
     router.push(redirect);
   };
 
@@ -121,16 +121,6 @@ function LoginForm() {
             disabled={isLoading}
           >
             {isLoading ? "Signing in..." : "Sign in"}
-          </Button>
-
-          {/* TEMPORARY DEV BYPASS - Remove before production! */}
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={handleGuestMode}
-          >
-            🚧 Continue as Guest (Dev Mode)
           </Button>
         </form>
 

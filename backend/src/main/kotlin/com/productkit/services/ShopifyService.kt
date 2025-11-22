@@ -86,4 +86,46 @@ class ShopifyService {
             return null
         }
     }
+
+    data class ShopifyReview(
+        val id: String,
+        val rating: Int,
+        val title: String?,
+        val body: String?,
+        val author: String?,
+        val createdAt: String?
+    )
+
+    fun getProductReviews(shopifyProductId: String, shopDomain: String, accessToken: String): List<ShopifyReview> {
+        if (shopDomain.isBlank() || accessToken.isBlank()) {
+            println("[SHOPIFY] Missing credentials, cannot fetch reviews")
+            return emptyList()
+        }
+
+        val shopifySdk = try {
+            ShopifySdk.newBuilder()
+                .withSubdomain(shopDomain)
+                .withAccessToken(accessToken)
+                .build()
+        } catch (e: Exception) {
+            println("[SHOPIFY] Failed to initialize SDK: ${e.message}")
+            return emptyList()
+        }
+
+        return try {
+            println("[SHOPIFY] Fetching reviews for product $shopifyProductId from $shopDomain...")
+            
+            // Note: The Shopify SDK may not have direct review support as reviews are often
+            // handled by third-party apps. This is a placeholder implementation.
+            // You may need to use the Shopify GraphQL API or a specific review app's API.
+            
+            // For now, returning empty list as the SDK doesn't have built-in review support
+            println("[SHOPIFY] Note: Review fetching requires Shopify GraphQL API or review app integration")
+            emptyList()
+        } catch (e: Exception) {
+            println("[SHOPIFY] Failed to fetch reviews: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
 }
