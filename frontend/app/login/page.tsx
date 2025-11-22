@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -16,15 +16,6 @@ function LoginForm() {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // TEMPORARY DEV BYPASS - Remove before production!
-  useEffect(() => {
-    const DEV_BYPASS = true; // Set to false to require login
-    if (DEV_BYPASS) {
-      console.log("🚧 DEV MODE: Bypassing login and redirecting to dashboard");
-      router.push(redirect);
-    }
-  }, [router, redirect]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -43,6 +34,22 @@ function LoginForm() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGuestMode = () => {
+    console.log("🚧 DEV MODE: Accessing as guest");
+    
+    // Set a fake token to bypass middleware and auth checks
+    document.cookie = "auth-token=dev-bypass-token; path=/";
+    localStorage.setItem('accessToken', 'dev-bypass-token');
+    localStorage.setItem('user', JSON.stringify({
+      _id: 'guest',
+      email: 'guest@dev.local',
+      firstName: 'Guest',
+      lastName: 'User'
+    }));
+    
+    router.push(redirect);
   };
 
   return (
@@ -111,6 +118,16 @@ function LoginForm() {
             disabled={isLoading}
           >
             {isLoading ? "Signing in..." : "Sign in"}
+          </Button>
+
+          {/* TEMPORARY DEV BYPASS - Remove before production! */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleGuestMode}
+          >
+            🚧 Continue as Guest (Dev Mode)
           </Button>
         </form>
 
