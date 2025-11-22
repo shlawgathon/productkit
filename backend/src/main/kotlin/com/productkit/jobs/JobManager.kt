@@ -37,8 +37,11 @@ object JobManager {
     private val tasks = ConcurrentHashMap<String, Job>()
 
     private val productRepo = ProductRepository()
+    private val userRepo = com.productkit.repositories.UserRepository()
     private val fal = FalService()
     private val nvidia = NvidiaService()
+    private val storage = com.productkit.services.StorageService()
+    private val shopify = com.productkit.services.ShopifyService()
 
     fun getStatus(jobId: String): GenerationJobStatus? = jobs[jobId]
 
@@ -72,36 +75,63 @@ object JobManager {
                 }
 
                 var assets3d: String? = null
-                if ("360" in req.assetTypes) {
-                    println("[JOB_PROCESSING] Generating 3D model for product $productId")
-                    val baseImage = product.originalImages.firstOrNull()
-                    if (baseImage != null) {
-                        val modelUrl = nvidia.generate3DModel(baseImage)
-                       assets3d = modelUrl
+                println("[JOB_PROCESSING] Generating 3D model for product $productId")
+                val baseImage = product.originalImages.firstOrNull()
+                if (baseImage != null) {
+                    try {
+                        val modelUrl = fal.generate3DModelGLB(baseImage)
+                        println("[JOB_PROCESSING] GLB generated at: $modelUrl")
+
+                        // Download the file
+                        val url = java.net.URL(modelUrl)
+                        val bytes = url.readBytes()
+                        val fileName = "product-$productId-model.glb"
+
+                        // Upload to S3
+                        println("[JOB_PROCESSING] Uploading GLB to storage...")
+                        val s3Url = storage.uploadFile(fileName, bytes, "model/gltf-binary")
+                        assets3d = s3Url
+                        println("[JOB_PROCESSING] GLB uploaded to: $assets3d")
+                    } catch (e: Exception) {
+                        println("[JOB_PROCESSING] Failed to generate/upload 3D model: ${e.message}")
+                        e.printStackTrace()
                     }
-                    status.progress = 70
                 }
+                status.progress = 70
 
                 // Generate marketing copy using Fal AI
                 println("[JOB_PROCESSING] Generating marketing copy for product $productId")
                 var productCopy: com.productkit.models.ProductCopy? = null
                 try {
+                    val pdfGuidesInfo = if (product.pdfGuides.isNotEmpty()) {
+                        "\nAdditional Context: This product has ${product.pdfGuides.size} PDF guide(s) available, suggesting it may have technical specifications or detailed documentation."
+                    } else ""
+
                     val copyPrompt = """
-                        You are an expert marketing copywriter. Create compelling product marketing copy for the following product.
+                        You are an expert marketing copywriter specializing in e-commerce product descriptions. 
+                        Create compelling, conversion-focused marketing copy for the following product.
                         
                         Product Name: ${product.name}
-                        Product Description: ${product.description ?: "No description provided"}
+                        Product Description: ${product.description ?: "No description provided"}$pdfGuidesInfo
                         
-                        Generate a JSON object with the following fields:
-                        - headline: A catchy, attention-grabbing headline (max 60 characters)
-                        - subheadline: A compelling subheadline that expands on the headline (max 120 characters)
-                        - description: A detailed product description (2-3 sentences, max 300 characters)
-                        - features: An array of 3-5 key product features (each max 50 characters)
-                        - benefits: An array of 3-5 customer benefits (each max 50 characters)
+                        Your task is to generate a JSON object with the following fields:
                         
-                        Return ONLY the JSON object, no extra text.
+                        1. headline: A catchy, benefit-driven headline that grabs attention (max 60 characters)
+                        2. subheadline: A compelling subheadline that expands on the value proposition (max 120 characters)
+                        3. description: A persuasive product description highlighting what makes it special (2-3 sentences, max 300 characters)
+                        4. features: An array of 3-5 specific, tangible product features (e.g., "Premium Leather Construction", "Wireless Charging Compatible", "Water-Resistant Design"). Each feature should be concrete and descriptive (max 50 characters each)
+                        5. benefits: An array of 3-5 customer-focused benefits that explain the value (e.g., "Lasts for Years", "Saves You Time", "Enhances Your Lifestyle"). Focus on outcomes and emotional value (max 50 characters each)
+                        
+                        Important: 
+                        - Features describe WHAT the product has (specifications, materials, capabilities)
+                        - Benefits describe WHY it matters to the customer (value, outcomes, feelings)
+                        - Make features and benefits specific to this product, not generic
+                        - Use professional, persuasive language
+                        
+                        Return ONLY a valid JSON object with these exact keys, no extra text or markdown formatting.
                     """.trimIndent()
 
+                    println("[JOB_PROCESSING] Sending prompt to Fal AI for marketing copy generation")
                     val result = fal.fal.subscribe(
                         endpointId = "fal-ai/llama-3-70b-instruct",
                         input = mapOf(
@@ -111,7 +141,7 @@ object JobManager {
                         ),
                         options = ai.fal.client.kt.SubscribeOptions(logs = true)
                     ) { update ->
-                        println("[JOB_PROCESSING] Marketing copy generation: $update")
+                        println("[JOB_PROCESSING] Marketing copy generation update: $update")
                     }
 
                     var jsonString = result.data.toString()
@@ -119,10 +149,13 @@ object JobManager {
                         .replace("```", "")
                         .trim()
 
+                    println("[JOB_PROCESSING] Raw AI response: $jsonString")
+
                     // Try to extract just the JSON object if there's extra text
                     val jsonMatch = Regex("""\{[\s\S]*?\}""").find(jsonString)
                     if (jsonMatch != null) {
                         jsonString = jsonMatch.value
+                        println("[JOB_PROCESSING] Extracted JSON: $jsonString")
                     }
 
                     val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
@@ -140,18 +173,50 @@ object JobManager {
                         } ?: emptyList()
                     )
 
-                    println("[JOB_PROCESSING] Generated marketing copy: ${productCopy.headline}")
+                    println("[JOB_PROCESSING] Successfully generated marketing copy:")
+                    println("[JOB_PROCESSING]   Headline: ${productCopy.headline}")
+                    println("[JOB_PROCESSING]   Features: ${productCopy.features}")
+                    println("[JOB_PROCESSING]   Benefits: ${productCopy.benefits}")
                 } catch (e: Exception) {
                     println("[JOB_PROCESSING] Failed to generate marketing copy: ${e.message}")
                     e.printStackTrace()
-                    // Use fallback copy
+
+                    // Generate more contextual fallback copy based on product details
+                    val productWords = product.name.split(" ").filter { it.length > 3 }
+                    val descWords = product.description?.split(" ")?.filter { it.length > 4 }?.take(3) ?: emptyList()
+
+                    val fallbackFeatures = mutableListOf<String>()
+                    val fallbackBenefits = mutableListOf<String>()
+
+                    // Generate contextual features
+                    if (productWords.isNotEmpty()) {
+                        fallbackFeatures.add("Premium ${productWords.firstOrNull() ?: "Quality"} Design")
+                    }
+                    fallbackFeatures.addAll(listOf(
+                        "Durable Construction",
+                        "Modern Aesthetic",
+                        "Expert Craftsmanship"
+                    ))
+
+                    // Generate contextual benefits
+                    fallbackBenefits.addAll(listOf(
+                        "Built to Last",
+                        "Exceptional Value",
+                        "Customer Favorite",
+                        "Trusted Quality"
+                    ))
+
                     productCopy = com.productkit.models.ProductCopy(
-                        headline = product.name,
-                        subheadline = "Discover the perfect ${product.name}",
-                        description = product.description ?: "A premium product designed for you.",
-                        features = listOf("High Quality", "Durable", "Stylish"),
-                        benefits = listOf("Long-lasting", "Great Value", "Customer Favorite")
+                        headline = "Discover ${product.name}",
+                        subheadline = "Premium quality meets exceptional design",
+                        description = product.description ?: "Experience the perfect blend of style, quality, and functionality with ${product.name}.",
+                        features = fallbackFeatures.take(4),
+                        benefits = fallbackBenefits.take(4)
                     )
+
+                    println("[JOB_PROCESSING] Using fallback marketing copy:")
+                    println("[JOB_PROCESSING]   Features: ${productCopy.features}")
+                    println("[JOB_PROCESSING]   Benefits: ${productCopy.benefits}")
                 }
                 status.progress = 85
 
@@ -170,10 +235,29 @@ object JobManager {
                     arModelUrl = assets3d ?: existingAssets?.arModelUrl
                 )
 
+                // Sync to Shopify
+                var shopifyId: String? = null
+                var shopifyUrl: String? = null
+                
+                if (generatedAssets != null) {
+                     val user = userRepo.findById(product.userId)
+                     if (user?.shopifyStoreUrl != null && user.shopifyAccessToken != null) {
+                         val shopifyResult = shopify.createProduct(product, generatedAssets, user.shopifyStoreUrl, user.shopifyAccessToken)
+                         if (shopifyResult != null) {
+                             shopifyId = shopifyResult.id
+                             shopifyUrl = shopifyResult.url
+                         }
+                     } else {
+                         println("[SHOPIFY] User ${product.userId} does not have Shopify credentials configured")
+                     }
+                }
+
                 // Update product with generated assets and completed status
                 val updated: Product = product.copy(
                     status = ProductStatus.COMPLETED,
                     generatedAssets = generatedAssets,
+                    shopifyProductId = shopifyId,
+                    shopifyStorefrontUrl = shopifyUrl,
                     updatedAt = System.currentTimeMillis()
                 )
                 productRepo.update(updated)

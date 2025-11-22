@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MoreHorizontal, Edit, ExternalLink, Trash2 } from "lucide-react";
+import { MoreHorizontal, Edit, ExternalLink, Trash2, ShoppingBag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import GlbViewer from "@/components/dashboard/GlbViewer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,11 @@ export interface Product {
   status: "active" | "draft" | "generating" | "error";
   thumbnailUrl: string;
   lastModified: string;
+  generatedAssets?: {
+    arModelUrl?: string;
+    // other asset fields can be added as needed
+  };
+  shopifyStorefrontUrl?: string;
 }
 
 interface ProductCardProps {
@@ -70,6 +76,13 @@ export function ProductCard({ product }: ProductCardProps) {
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </Link>
+            {product.shopifyStorefrontUrl && (
+              <Link href={product.shopifyStorefrontUrl} target="_blank" rel="noopener noreferrer">
+                <Button size="icon" variant="secondary" className="h-9 w-9 rounded-full bg-green-100 hover:bg-green-200 text-green-700">
+                  <ShoppingBag className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
             <Button
               size="icon"
               variant="destructive"
@@ -114,6 +127,13 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         </div>
       </div>
+
+      {/* GLB 3D Model Viewer */}
+      {product.generatedAssets?.arModelUrl && (
+        <div className="mt-4 flex justify-center">
+          <GlbViewer url={product.generatedAssets.arModelUrl} width={300} height={300} />
+        </div>
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

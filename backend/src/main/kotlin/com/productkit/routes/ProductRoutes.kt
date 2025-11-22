@@ -53,8 +53,8 @@ fun Route.registerProductRoutes() {
             com.productkit.jobs.JobManager.enqueueAssetsGeneration(
                 product._id,
                 com.productkit.jobs.GenerationRequest(
-                    assetTypes = listOf("hero"),
-                    count = mapOf("hero" to 5)
+                    assetTypes = listOf("hero", "360"),
+                    count = mapOf("hero" to 1, "360" to 1)
                 )
             )
 

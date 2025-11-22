@@ -162,13 +162,53 @@ class FalService(
                 endpointId = SEEDREAM_EDIT_MODEL,
                 input = input,
                 options = SubmitOptions(webhookUrl = request.webhookUrl),
-                 // Optional webhook for async notifications
+                // Optional webhook for async notifications
             )
 
             requestIdMap[request.productId] = submission.requestId
         }
 
         return requestIdMap
+    }
+
+    /**
+     * Generate a 3D GLB model using Fal AI omnipart model.
+     * Returns a URL to the generated GLB file.
+     */
+    suspend fun generate3DModelGLB(baseImage: String): String {
+        // Prepare input for omnipart model. The model expects an input image URL.
+        val input = mapOf(
+            "input_image_url" to baseImage
+        )
+        // Submit the job to the omnipart endpoint.
+        val submission = fal.queue.submit(
+            endpointId = "fal-ai/omnipart",
+            input = input,
+            options = SubmitOptions()
+        )
+        // Poll for result synchronously (simple implementation).
+        var attempts = 0
+        while (attempts < 100) { // wait up to ~30 seconds
+            try {
+                val result = fal.queue.result(
+                    endpointId = "fal-ai/omnipart",
+                    requestId = submission.requestId
+                )
+                // Assuming result.data contains a field "url" with the GLB location.
+                val jsonStr = result.data.toString()
+                // Simple extraction of URL using regex.
+                val regex = Regex("\\\"url\\\":\\\"([^\\\"]+)\\\"")
+                val match = regex.find(jsonStr)
+                if (match != null) {
+                    return match.groupValues[1]
+                }
+            } catch (e: Exception) {
+                // If not ready yet, ignore and retry.
+            }
+            attempts++
+            kotlinx.coroutines.delay(1000L)
+        }
+        throw IllegalStateException("Failed to retrieve GLB model from Fal AI after waiting")
     }
 
     /**

@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Download, Share2, Edit, MoreHorizontal, Copy, Check, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Share2, Edit, MoreHorizontal, Copy, Check, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
@@ -107,6 +107,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {product.shopifyStorefrontUrl && (
+            <Button variant="outline" size="sm" className="gap-2 text-green-700 border-green-200 bg-green-50 hover:bg-green-100" asChild>
+              <a href={product.shopifyStorefrontUrl} target="_blank" rel="noopener noreferrer">
+                <ShoppingBag className="h-4 w-4" />
+                View on Shopify
+              </a>
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-2">
             <Share2 className="h-4 w-4" />
             Share
@@ -243,6 +251,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   <span className="text-muted-foreground block mb-1">Last Modified</span>
                   <p>{new Date(product.updatedAt).toLocaleDateString()}</p>
                 </div>
+                {product.shopifyStorefrontUrl && (
+                  <div className="col-span-2 pt-2 border-t mt-2">
+                    <span className="text-muted-foreground block mb-1">Shopify Link</span>
+                    <a href={product.shopifyStorefrontUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate block">
+                      {product.shopifyStorefrontUrl}
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           </div>

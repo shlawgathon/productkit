@@ -27,9 +27,4 @@ object Config {
     val DO_SPACES_SECRET: String? = dotenv["DO_SPACES_SECRET"]
     val DO_SPACES_ENDPOINT: String? = dotenv["DO_SPACES_ENDPOINT"]
     val DO_SPACES_BUCKET: String? = dotenv["DO_SPACES_BUCKET"]
-
-    val SHOPIFY_APP_KEY: String? = dotenv["SHOPIFY_APP_KEY"]
-    val SHOPIFY_APP_SECRET: String? = dotenv["SHOPIFY_APP_SECRET"]
-    val SHOPIFY_SHOP_DOMAIN: String? = dotenv["SHOPIFY_SHOP_DOMAIN"]
-    val SHOPIFY_ACCESS_TOKEN: String? = dotenv["SHOPIFY_ACCESS_TOKEN"]
 }
