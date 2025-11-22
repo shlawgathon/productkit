@@ -64,17 +64,16 @@ export default function SignUpPage() {
         >
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">email</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 name="email"
-                type="text"
+                type="email"
                 autoComplete="email"
                 required
                 minLength={3}
-                maxLength={20}
-                pattern="[a-zA-Z0-9_]+"
-                placeholder="johndoe"
+                maxLength={48}
+                placeholder="johndoe@example.com"
               />
             </div>
             <div className="space-y-2">
