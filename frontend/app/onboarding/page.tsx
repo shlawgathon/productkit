@@ -29,6 +29,8 @@ function OnboardingContent() {
   const [productDescription, setProductDescription] = useState("");
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // New state for inline validation errors
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (slug) {
@@ -41,6 +43,20 @@ function OnboardingContent() {
   }, [slug]);
 
   const handleNext = () => {
+    // Validation before advancing steps
+    if (currentStep === 0 && files.length === 0) {
+      setFormError('Please upload at least one header image before proceeding.');
+      return;
+    }
+    if (currentStep === 1 && productName.trim() === '') {
+      setFormError('Product name is required.');
+      return;
+    }
+    if (currentStep === 1 && productDescription.trim() === '') {
+      setFormError('Product description is required.');
+      return;
+    }
+    setFormError(null);
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     }
@@ -144,6 +160,9 @@ function OnboardingContent() {
                 {currentStep === 1 && "Provide details to help our AI understand your product context."}
                 {currentStep === 2 && "Review your information before we start the magic."}
               </p>
+              {formError && (
+                <p className="mt-2 text-sm text-destructive font-medium">{formError}</p>
+              )}
             </div>
 
             <div className="min-h-[400px]">
@@ -186,56 +205,59 @@ function OnboardingContent() {
                           onChange={handlePdfUpload}
                           className="hidden"
                         />
-                        <Label
-                          htmlFor="pdf-upload"
-                          className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-dashed rounded-xl border-muted-foreground/25 hover:bg-muted/50 hover:border-primary/50 cursor-pointer"
-                        >
-                          <div className="flex flex-col items-center space-y-2 text-center">
-                            <div className="p-3 rounded-full bg-primary/5 text-primary">
-                              <FileText className="w-6 h-6" />
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-sm font-medium">
-                                Click to upload PDF guides
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                or drag and drop files here
-                              </p>
-                            </div>
-                          </div>
-                        </Label>
                       </div>
-
-                      {pdfFiles.length > 0 && (
-                        <div className="grid gap-2 animate-in fade-in slide-in-from-top-2">
-                          {pdfFiles.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 transition-all border rounded-lg bg-card hover:shadow-sm group">
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-red-50 text-red-600">
-                                  <FileText className="w-5 h-5" />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm font-medium truncate">{file.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                                  </span>
-                                </div>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="w-8 h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => removePdf(index)}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
+                      {/* Recommendation note */}
+                      <p className="text-xs text-muted-foreground">PDF guide is optional but recommended – it helps the AI produce richer marketing copy.</p>
+                      <Label
+                        htmlFor="pdf-upload"
+                        className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-dashed rounded-xl border-muted-foreground/25 hover:bg-muted/50 hover:border-primary/50 cursor-pointer"
+                      >
+                        <div className="flex flex-col items-center space-y-2 text-center">
+                          <div className="p-3 rounded-full bg-primary/5 text-primary">
+                            <FileText className="w-6 h-6" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">
+                              Click to upload PDF guides
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              or drag and drop files here
+                            </p>
+                          </div>
                         </div>
-                      )}
+                      </Label>
                     </div>
+
+                    {pdfFiles.length > 0 && (
+                      <div className="grid gap-2 animate-in fade-in slide-in-from-top-2">
+                        {pdfFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 transition-all border rounded-lg bg-card hover:shadow-sm group">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-red-50 text-red-600">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-medium truncate">{file.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-8 h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => removePdf(index)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
+
               )}
 
               {currentStep === 2 && (
@@ -283,6 +305,7 @@ function OnboardingContent() {
                       </div>
                     )}
                   </div>
+                  {formError && <p className="mt-2 text-sm text-destructive">{formError}</p>}
                 </div>
               )}
             </div>
@@ -303,7 +326,7 @@ function OnboardingContent() {
                   size="lg"
                   className="gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all"
                   onClick={handleCreateProduct}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || productName.trim() === '' || productDescription.trim() === '' || files.length === 0}
                 >
                   <Sparkles className="h-4 w-4" />
                   {isSubmitting ? "Creating..." : "Generate Assets"}
