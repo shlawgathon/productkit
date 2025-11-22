@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -16,6 +16,15 @@ function LoginForm() {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // TEMPORARY DEV BYPASS - Remove before production!
+  useEffect(() => {
+    const DEV_BYPASS = true; // Set to false to require login
+    if (DEV_BYPASS) {
+      console.log("🚧 DEV MODE: Bypassing login and redirecting to dashboard");
+      router.push(redirect);
+    }
+  }, [router, redirect]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
