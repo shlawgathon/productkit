@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { User, Save, Palette } from "lucide-react";
+import { User, Save, Palette, Store } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -23,6 +23,10 @@ export default function SettingsPage() {
     lastName: "",
     bio: "",
     email: ""
+  });
+  const [shopify, setShopify] = useState({
+    shopifyStoreUrl: "",
+    shopifyAccessToken: ""
   });
 
   useEffect(() => {
@@ -44,6 +48,11 @@ export default function SettingsPage() {
           email: userProfile.email || ""
         });
 
+        setShopify({
+          shopifyStoreUrl: userProfile.shopifyStoreUrl || "",
+          shopifyAccessToken: userProfile.shopifyAccessToken || ""
+        });
+
       } catch (error) {
         console.error("Failed to fetch settings", error);
       }
@@ -58,7 +67,9 @@ export default function SettingsPage() {
       await api.updateProfile({
         firstName: profile.firstName,
         lastName: profile.lastName,
-        bio: profile.bio
+        bio: profile.bio,
+        shopifyStoreUrl: shopify.shopifyStoreUrl,
+        shopifyAccessToken: shopify.shopifyAccessToken
       });
       // Optional: Show success toast
     } catch (error) {
@@ -120,6 +131,55 @@ export default function SettingsPage() {
                 value={profile.bio}
                 onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Shopify Integration Section */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+          <div className="p-6 border-b">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Store className="h-5 w-5" />
+              Shopify Integration
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Connect your Shopify store to enable AI customer insights and review analytics.
+            </p>
+          </div>
+
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="shopifyStoreUrl">Shopify Store URL</Label>
+              <Input
+                id="shopifyStoreUrl"
+                placeholder="mystore.myshopify.com"
+                value={shopify.shopifyStoreUrl}
+                onChange={(e) => setShopify({ ...shopify, shopifyStoreUrl: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Your Shopify store domain (e.g., mystore.myshopify.com)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shopifyAccessToken">Shopify Access Token</Label>
+              <Input
+                id="shopifyAccessToken"
+                type="password"
+                placeholder="shpat_••••••••••••••••"
+                value={shopify.shopifyAccessToken}
+                onChange={(e) => setShopify({ ...shopify, shopifyAccessToken: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Your Shopify Admin API access token with read permissions for products and metafields
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>Note:</strong> AI Customer Insights will only work after you've configured your Shopify credentials.
+                Without these credentials, you'll see mock review data.
+              </p>
             </div>
           </div>
         </div>

@@ -14,9 +14,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 private val productRepo = ProductRepository()
 
-data class CreateProductRequest(val name: String, val description: String? = null, val images: List<String> = emptyList())
+data class CreateProductRequest(val name: String, val description: String? = null, val images: List<String> = emptyList(), val pdfGuides: List<String> = emptyList())
 data class UpdateProductRequest(val name: String? = null, val description: String? = null, val images: List<String>? = null)
-data class RegenerateProductRequest(val productId: String)
 
 fun Route.registerProductRoutes() {
     route("/api/products") {
@@ -45,9 +44,20 @@ fun Route.registerProductRoutes() {
                     name = req.name,
                     description = req.description,
                     originalImages = req.images,
+                    pdfGuides = req.pdfGuides,
                     status = ProductStatus.PROCESSING
                 )
             )
+
+            // Enqueue job processing
+            com.productkit.jobs.JobManager.enqueueAssetsGeneration(
+                product._id,
+                com.productkit.jobs.GenerationRequest(
+                    assetTypes = listOf("hero"),
+                    count = mapOf("hero" to 5)
+                )
+            )
+
             call.respond(mapOf("productId" to product._id, "status" to product.status.name))
         }
 

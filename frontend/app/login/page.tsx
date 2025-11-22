@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -22,18 +22,37 @@ function LoginForm() {
     setIsLoading(true);
     setError("");
     const formData = new FormData(e.currentTarget);
-    const username = formData.get("username") as string;
+    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     try {
-      // Using username instead of email - backend may need to be updated to accept username
-      await login({ username, password });
+      console.log("[Login] Submitting login request for:", email);
+      // Using email instead of email - backend may need to be updated to accept email
+      await login({ email, password });
+      console.log("[Login] Login successful, redirecting to:", redirect);
       router.push(redirect);
     } catch (err: any) {
+      console.error("[Login] Login error:", err);
       setError(err.message || "Failed to login");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGuestMode = () => {
+    console.log("🚧 DEV MODE: Accessing as guest");
+    
+    // Set a fake token to bypass middleware and auth checks
+    document.cookie = "auth-token=dev-bypass-token; path=/";
+    localStorage.setItem('accessToken', 'dev-bypass-token');
+    localStorage.setItem('user', JSON.stringify({
+      _id: 'guest',
+      email: 'guest@dev.local',
+      firstName: 'Guest',
+      lastName: 'User'
+    }));
+    
+    router.push(redirect);
   };
 
   return (
@@ -69,12 +88,12 @@ function LoginForm() {
         >
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">email</Label>
               <Input
-                id="username"
-                name="username"
+                id="email"
+                name="email"
                 type="text"
-                autoComplete="username"
+                autoComplete="email"
                 required
                 placeholder="johndoe"
               />
@@ -102,6 +121,16 @@ function LoginForm() {
             disabled={isLoading}
           >
             {isLoading ? "Signing in..." : "Sign in"}
+          </Button>
+
+          {/* TEMPORARY DEV BYPASS - Remove before production! */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleGuestMode}
+          >
+            🚧 Continue as Guest (Dev Mode)
           </Button>
         </form>
 

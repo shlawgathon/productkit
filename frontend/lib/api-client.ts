@@ -14,6 +14,15 @@ class ApiClient {
         if (typeof window !== 'undefined') {
             this.accessToken = localStorage.getItem('accessToken');
             this.refreshToken = localStorage.getItem('refreshToken');
+
+            // If no token in localStorage, try to get from cookie
+            if (!this.accessToken) {
+                const cookies = document.cookie.split(';');
+                const authCookie = cookies.find(c => c.trim().startsWith('auth-token='));
+                if (authCookie) {
+                    this.accessToken = authCookie.split('=')[1];
+                }
+            }
         }
     }
 
@@ -30,6 +39,12 @@ class ApiClient {
         if (typeof window !== 'undefined') {
             localStorage.setItem('accessToken', accessToken);
             localStorage.setItem('refreshToken', refreshToken);
+
+            // Also set cookie for middleware to read
+            // Set cookie with 7 day expiration
+            const expirationDate = new Date();
+            expirationDate.setDate(expirationDate.getDate() + 7);
+            document.cookie = `auth-token=${accessToken}; path=/; expires=${expirationDate.toUTCString()}; SameSite=Lax`;
         }
     }
 
@@ -39,6 +54,9 @@ class ApiClient {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
+
+            // Also clear the cookie
+            document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         }
     }
 
@@ -55,7 +73,14 @@ class ApiClient {
 
         console.log(`[API Request] ${options.method || 'GET'} ${url}`, options.body ? JSON.parse(options.body as string) : '');
 
-        let response = await fetch(url, { ...options, headers });
+        let response;
+        try {
+            response = await fetch(url, { ...options, headers });
+        } catch (error) {
+            // Network error (server not running, no internet, etc.)
+            console.warn(`[API] Network error - server may be offline:`, error);
+            throw new Error('Unable to connect to server. Please check if the backend is running.');
+        }
 
         console.log(`[API Response] ${response.status} ${url}`);
 
@@ -66,7 +91,12 @@ class ApiClient {
             if (refreshSuccess) {
                 // Retry original request with new token
                 headers['Authorization'] = `Bearer ${this.accessToken}`;
-                response = await fetch(url, { ...options, headers });
+                try {
+                    response = await fetch(url, { ...options, headers });
+                } catch (error) {
+                    console.warn(`[API] Network error on retry:`, error);
+                    throw new Error('Unable to connect to server');
+                }
             } else {
                 this.clearTokens();
                 window.location.href = '/login'; // Redirect to login
@@ -216,17 +246,28 @@ class ApiClient {
             headers['Authorization'] = `Bearer ${this.accessToken}`;
         }
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: formData,
-        });
+        let response;
+        try {
+            response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: formData,
+            });
+        } catch (error) {
+            console.warn(`[API] Upload failed - network error:`, error);
+            throw new Error('Unable to connect to server for upload');
+        }
 
         if (!response.ok) {
             throw new Error('Upload failed');
         }
 
         return response.json();
+    }
+
+    // Reviews
+    public async getReviews(productId: string) {
+        return this.request<any>(`/api/reviews?productId=${productId}`);
     }
 }
 
