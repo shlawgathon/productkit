@@ -1,10 +1,11 @@
 "use client"
 import Link from "next/link";
-import { Bell, Menu, Search, User as UserIcon, Settings, LogOut, Upload } from "lucide-react";
+import { Menu, Search, User as UserIcon, Settings, LogOut, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api-client";
 import { useRef } from "react";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function Header() {
   const { user, logout, updateUser } = useAuth();
@@ -65,10 +66,7 @@ export function Header() {
             />
           </div>
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
-          </Button>
+          <NotificationBell />
 
           <div className="relative group">
             <div className="h-8 w-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 ring-2 ring-white cursor-pointer flex items-center justify-center text-white font-bold text-xs select-none overflow-hidden">
