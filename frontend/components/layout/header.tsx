@@ -1,7 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu, Search, User, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Header() {
@@ -16,7 +14,7 @@ export function Header() {
             <div className="relative h-8 w-8 overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
-                src="/logo.png" 
+                src="/icon.png" 
                 alt="ProductKit Logo" 
                 className="object-contain h-full w-full"
               />
@@ -43,7 +41,32 @@ export function Header() {
             <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
           </Button>
           
-          <div className="h-8 w-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 ring-2 ring-white cursor-pointer" />
+          <div className="relative group">
+            <div className="h-8 w-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 ring-2 ring-white cursor-pointer flex items-center justify-center text-white font-bold text-xs select-none">
+              JD
+            </div>
+            
+            {/* Profile Dropdown */}
+            <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border bg-white p-1 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
+              <div className="px-2 py-2 border-b mb-1">
+                <p className="text-sm font-medium">John Doe</p>
+                <p className="text-xs text-muted-foreground truncate">john.doe@example.com</p>
+              </div>
+              <Link href="/settings" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
+              <Link href="/settings" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                <User className="h-4 w-4" />
+                Profile
+              </Link>
+              <div className="h-px bg-gray-100 my-1" />
+              <Link href="/login" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                <LogOut className="h-4 w-4" />
+                Log out
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </header>
