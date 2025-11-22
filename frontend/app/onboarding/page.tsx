@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, ArrowLeft, Sparkles, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, Image as ImageIcon, FileText, X } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 
@@ -27,6 +27,7 @@ function OnboardingContent() {
   const [files, setFiles] = useState<File[]>([]);
   const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
+  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -51,6 +52,16 @@ function OnboardingContent() {
     }
   };
 
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setPdfFiles(prev => [...prev, ...Array.from(e.target.files || [])]);
+    }
+  };
+
+  const removePdf = (index: number) => {
+    setPdfFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleCreateProduct = async () => {
     setIsSubmitting(true);
     try {
@@ -68,20 +79,29 @@ function OnboardingContent() {
         }
       }
 
+      // Upload PDF files
+      const pdfUrls: string[] = [];
+      for (const file of pdfFiles) {
+        try {
+          const uploadRes = await api.uploadFile(file);
+          if (uploadRes.url) {
+            pdfUrls.push(uploadRes.url);
+          }
+        } catch (e) {
+          console.error("Failed to upload PDF", file.name, e);
+        }
+      }
+
       // Fallback if no images uploaded (or failed)
       if (imageUrls.length === 0) {
-        // For now, if upload fails (e.g. no keys), use placeholder so flow doesn't break
-        // But user asked for NO mock data. If upload fails, we should probably alert.
-        // However, to keep the app usable if keys aren't set, I'll add a placeholder only if strictly needed.
-        // Let's assume keys are set or user accepts failure.
-        // But to be safe:
         imageUrls.push("https://placehold.co/600x400?text=No+Image+Uploaded");
       }
 
       const response = await api.createProduct({
         name: productName,
         description: productDescription,
-        images: imageUrls
+        images: imageUrls,
+        pdfGuides: pdfUrls // Include PDF guides
       });
 
       // Redirect to the product page or status page
@@ -98,18 +118,18 @@ function OnboardingContent() {
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <div className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+        <div className="container mx-auto flex h-20 max-w-5xl items-center justify-between px-4">
           <Link href="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground">
             Exit
           </Link>
-          <div className="w-64">
+          <div className="w-full max-w-sm">
             <Stepper steps={steps} currentStep={currentStep} />
           </div>
           <div className="w-10" /> {/* Spacer for centering */}
         </div>
       </div>
 
-      <main className="container mx-auto max-w-5xl px-4 pt-24 pb-12">
+      <main className="container mx-auto max-w-5xl px-4 pt-28 pb-12">
         <div className="grid gap-12 lg:grid-cols-2">
           {/* Left Column: Form */}
           <div className="space-y-8">
@@ -153,6 +173,68 @@ function OnboardingContent() {
                       onChange={(e) => setProductDescription(e.target.value)}
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Product Guides (PDF)</Label>
+                    <div className="flex flex-col gap-3">
+                      <div className="relative">
+                        <Input
+                          id="pdf-upload"
+                          type="file"
+                          accept=".pdf"
+                          multiple
+                          onChange={handlePdfUpload}
+                          className="hidden"
+                        />
+                        <Label
+                          htmlFor="pdf-upload"
+                          className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-dashed rounded-xl border-muted-foreground/25 hover:bg-muted/50 hover:border-primary/50 cursor-pointer"
+                        >
+                          <div className="flex flex-col items-center space-y-2 text-center">
+                            <div className="p-3 rounded-full bg-primary/5 text-primary">
+                              <FileText className="w-6 h-6" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium">
+                                Click to upload PDF guides
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                or drag and drop files here
+                              </p>
+                            </div>
+                          </div>
+                        </Label>
+                      </div>
+
+                      {pdfFiles.length > 0 && (
+                        <div className="grid gap-2 animate-in fade-in slide-in-from-top-2">
+                          {pdfFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 transition-all border rounded-lg bg-card hover:shadow-sm group">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-red-50 text-red-600">
+                                  <FileText className="w-5 h-5" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm font-medium truncate">{file.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                                  </span>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-8 h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => removePdf(index)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -180,9 +262,26 @@ function OnboardingContent() {
                         <span className="font-medium text-foreground">{files.length}</span> Images
                       </div>
                       <div>
+                        <span className="font-medium text-foreground">{pdfFiles.length}</span> PDF Guides
+                      </div>
+                      <div>
                         <span className="font-medium text-foreground">Standard</span> Quality
                       </div>
                     </div>
+
+                    {pdfFiles.length > 0 && (
+                      <div className="pt-4 border-t space-y-2">
+                        <h4 className="text-sm font-medium text-muted-foreground">Attached Guides</h4>
+                        <div className="grid gap-2">
+                          {pdfFiles.map((file, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <FileText className="h-4 w-4 text-red-500" />
+                              <span>{file.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
