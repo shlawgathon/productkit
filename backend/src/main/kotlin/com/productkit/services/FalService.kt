@@ -1,82 +1,222 @@
 package com.productkit.services
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.annotation.JsonProperty
+import ai.fal.client.ClientConfig
+import ai.fal.client.CredentialsResolver
+import ai.fal.client.FalClientImpl
+import ai.fal.client.kt.*
+import ai.fal.client.queue.QueueStatus
 import com.productkit.utils.Config
-import com.productkit.utils.HttpClientProvider
-import io.ktor.client.HttpClient
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.http.*
 
 class FalService(
-    private val client: HttpClient = HttpClientProvider.client,
-    private val apiKey: String? = Config.FAL_API_KEY,
-    private val baseUrl: String = "https://fal.run/fal-ai/flux/dev"
+    // Official client will handle FAL_KEY automatically from environment
+    private val fal: FalClient = createFalClient(
+        ClientConfig.withCredentials {
+            Config.FAL_API_KEY
+        }
+    )
 ) {
+    companion object {
+        // Seedream v4 edit model endpoint
+        private const val SEEDREAM_EDIT_MODEL = "fal-ai/bytedance/seedream/v4/edit"
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class FalImage(
-        @JsonProperty("url") val url: String
-    )
+        // You can also use other models like:
+        // private const val FLUX_MODEL = "fal-ai/flux/dev"
+        // private const val SDXL_MODEL = "fal-ai/fast-sdxl"
+    }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class FalResponse(
-        @JsonProperty("images") val images: List<FalImage>? = null,
-        @JsonProperty("image") val image: FalImage? = null
-    )
-
+    /**
+     * Generate product images using the Seedream v4 edit model
+     *
+     * @param productId Product identifier for tracking
+     * @param baseImage URL of the base image to edit
+     * @param type Type of product photo (e.g., "lifestyle", "studio", "outdoor")
+     * @param count Number of images to generate (not directly supported by seedream edit, will generate 1)
+     * @return List of generated image URLs
+     */
     suspend fun generateProductImages(
         productId: String,
         baseImage: String,
         type: String,
         count: Int
     ): List<String> {
-        if (apiKey.isNullOrBlank()) throw IllegalStateException("FAL_API_KEY is not set")
         val prompt = "High-quality $type product photo. Studio lighting. Ecommerce ready."
-        val response: FalResponse = client.post(baseUrl) {
-            header(HttpHeaders.Authorization, "Key $apiKey")
-            contentType(ContentType.Application.Json)
-            setBody(
-                mapOf(
-                    "prompt" to prompt,
-                    "num_images" to count.coerceIn(1, 20),
-                    "image_size" to "1024x1024"
-                )
-            )
-        }.body()
 
-        val urls = when {
-            response.images != null -> response.images.map { it.url }
-            response.image != null -> listOf(response.image.url)
-            else -> emptyList()
+        // Prepare input for the model
+        val input = mapOf(
+            "prompt" to prompt,
+            "image_urls" to listOf(baseImage)
+            // Note: Seedream v4 edit doesn't support num_images parameter
+            // If you need multiple variations, you'll need to call multiple times
+        )
+
+        // Using subscribe for real-time updates (recommended for longer operations)
+        val result = fal.subscribe(
+            endpointId = SEEDREAM_EDIT_MODEL,
+            input = input,
+            options = SubscribeOptions(logs = true)
+        ) { update ->
+            // Handle status updates if needed
+            when (update) {
+                is QueueStatus.InProgress -> {
+                    // You can log progress here if needed
+                    println("Processing: ${update.logs}")
+                }
+                is QueueStatus.Completed -> {
+
+                    println("Completed processing for product: $productId ${
+                        update.logs
+                    }")
+                }
+                else -> {
+                    // Handle other status types if needed
+                }
+            }
         }
-        return urls
+
+        println(result.data.toString())
+
+        // Extract URLs from the result
+        // The response structure may vary based on the model
+        return extractImageUrls(result.data)
     }
 
+    /**
+     * Generate consistent variations of a product across different contexts
+     *
+     * @param productId Product identifier for tracking
+     * @param embedding Product identity embedding description
+     * @param contexts List of context descriptions for variations
+     * @return List of generated image URLs
+     */
     suspend fun generateConsistentVariations(
         productId: String,
         embedding: String,
         contexts: List<String>
     ): List<String> {
-        if (apiKey.isNullOrBlank()) throw IllegalStateException("FAL_API_KEY is not set")
         val results = mutableListOf<String>()
+
+        // Generate variations for each context
         for (ctx in contexts) {
             val prompt = "${ctx.trim()}. Maintain product identity: $embedding"
-            val response: FalResponse = client.post(baseUrl) {
-                header(HttpHeaders.Authorization, "Key $apiKey")
-                contentType(ContentType.Application.Json)
-                setBody(
-                    mapOf(
-                        "prompt" to prompt,
-                        "num_images" to 1,
-                        "image_size" to "1024x1024"
-                    )
+
+            try {
+                // Using run for simpler operations (no status updates needed)
+                val result = fal.run(
+                    endpointId = SEEDREAM_EDIT_MODEL,
+                    input = mapOf("prompt" to prompt),
+                    options = RunOptions()
                 )
-            }.body()
-            val url = response.images?.firstOrNull()?.url ?: response.image?.url
-            if (url != null) results.add(url)
+
+                val urls = extractImageUrls(result.data)
+                results.addAll(urls)
+            } catch (e: Exception) {
+                println("Error generating variation for context '$ctx': ${e.message}")
+                // Continue with other contexts even if one fails
+            }
         }
+
         return results
     }
+
+    /**
+     * Alternative: Use queue-based processing for batch operations
+     * This is useful when you want to submit multiple requests and retrieve results later
+     */
+    suspend fun generateProductImagesBatch(
+        requests: List<ProductImageRequest>
+    ): Map<String, String> {
+        val requestIdMap = mutableMapOf<String, String>()
+
+        // Submit all requests to the queue
+        for (request in requests) {
+            val input = mapOf(
+                "prompt" to request.prompt,
+                "image_urls" to listOf(request.baseImage)
+            )
+
+            val submission = fal.queue.submit(
+                endpointId = SEEDREAM_EDIT_MODEL,
+                input = input,
+                options = SubmitOptions(webhookUrl = request.webhookUrl),
+                 // Optional webhook for async notifications
+            )
+
+            requestIdMap[request.productId] = submission.requestId
+        }
+
+        return requestIdMap
+    }
+
+    /**
+     * Retrieve batch results using request IDs
+     */
+    suspend fun getBatchResults(
+        requestIds: Map<String, String>
+    ): Map<String, List<String>> {
+        val results = mutableMapOf<String, List<String>>()
+
+        for ((productId, requestId) in requestIds) {
+            try {
+                val result = fal.queue.result(
+                    endpointId = SEEDREAM_EDIT_MODEL,
+                    requestId = requestId
+                )
+
+                results[productId] = extractImageUrls(result.data)
+            } catch (e: Exception) {
+                println("Error retrieving result for product $productId: ${e.message}")
+                results[productId] = emptyList()
+            }
+        }
+
+        return results
+    }
+
+    /**
+     * Check the status of a queued request
+     */
+    suspend fun checkRequestStatus(requestId: String): QueueStatus.StatusUpdate {
+        return fal.queue.status(
+            endpointId = SEEDREAM_EDIT_MODEL,
+            requestId = requestId
+        )
+    }
+
+    /**
+     * Helper function to extract image URLs from the response data
+     * The structure depends on the model's response format
+     */
+    private fun extractImageUrls(data: Any): List<String> {
+        // The response structure varies by model
+        // For Seedream v4 edit, it typically returns:
+        // { "images": [{"url": "..."}, ...] } or { "image": {"url": "..."} }
+
+        return when (data) {
+            is Map<*, *> -> {
+                // Check for "images" field (array of images)
+                val images = data["images"] as? List<*>
+                if (images != null) {
+                    images.mapNotNull { img ->
+                        (img as? Map<*, *>)?.get("url") as? String
+                    }
+                } else {
+                    // Check for single "image" field
+                    val image = data["image"] as? Map<*, *>
+                    val url = image?.get("url") as? String
+                    if (url != null) listOf(url) else emptyList()
+                }
+            }
+            else -> emptyList()
+        }
+    }
+
+    /**
+     * Data class for batch processing
+     */
+    data class ProductImageRequest(
+        val productId: String,
+        val baseImage: String,
+        val prompt: String,
+        val webhookUrl: String? = null
+    )
 }

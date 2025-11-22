@@ -50,6 +50,9 @@ dependencies {
     implementation("io.ktor:ktor-client-logging-jvm:2.3.12")
     implementation("io.ktor:ktor-client-auth-jvm:2.3.12")
 
+    // FAL AI official client
+    implementation("ai.fal.client:fal-client-kotlin:0.7.1")
+
     // Testing
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-tests-jvm:2.3.12")
