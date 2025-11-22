@@ -1,6 +1,5 @@
 package com.productkit.jobs
 
-import com.productkit.models.ImageData
 import com.productkit.models.Product
 import com.productkit.models.ProductStatus
 import com.productkit.repositories.ProductRepository
@@ -25,8 +24,7 @@ data class GenerationJobStatus(
     val productId: String,
     var status: String,
     var progress: Int,
-    var generatedAssets: ImageData? = null,
-    var generated3dAssets: String? = null
+    var generatedAssets: List<String> = emptyList()
 )
 
 object JobManager {
@@ -53,23 +51,23 @@ object JobManager {
                     status.status = "ERROR"; return@launch
                 }
 
-                var imageData: ImageData? = null
+                val outputs = mutableListOf<String>()
+
                 if ("hero" in req.assetTypes || "lifestyle" in req.assetTypes || "detail" in req.assetTypes) {
                     val heroCount = req.count["hero"] ?: 5
                     val baseImage = product.originalImages.firstOrNull()
                     if (baseImage != null) {
                         val images = fal.generateProductImages(productId, baseImage, type = "hero", count = heroCount)
-                        imageData = images
+                        outputs.addAll(images)
                     }
                     status.progress = 40
                 }
 
-                var assets3d: String? = null
                 if ("360" in req.assetTypes) {
                     val baseImage = product.originalImages.firstOrNull()
                     if (baseImage != null) {
                         val modelUrl = nvidia.generate3DModel(baseImage)
-                       assets3d = modelUrl
+                        outputs.add(modelUrl)
                     }
                     status.progress = 70
                 }
@@ -78,8 +76,7 @@ object JobManager {
                 val updated: Product = product.copy(status = ProductStatus.COMPLETED, updatedAt = System.currentTimeMillis())
                 productRepo.update(updated)
 
-                status.generatedAssets = imageData
-                status.generated3dAssets = assets3d
+                status.generatedAssets = outputs
                 status.progress = 100
                 status.status = "COMPLETED"
             } catch (e: Exception) {

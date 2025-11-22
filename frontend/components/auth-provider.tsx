@@ -8,7 +8,10 @@ import { useRouter, usePathname } from 'next/navigation';
 interface User {
     _id: string;
     email: string;
-    // Add other user fields as needed
+    firstName?: string;
+    lastName?: string;
+    profileImage?: string;
+    bio?: string;
 }
 
 interface AuthContextType {
@@ -17,6 +20,7 @@ interface AuthContextType {
     login: (credentials: any) => Promise<void>;
     register: (credentials: any) => Promise<void>;
     logout: () => Promise<void>;
+    updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,35 +36,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const token = localStorage.getItem('accessToken');
             if (token) {
                 try {
-                    // We don't have a dedicated /me endpoint, but we can use /settings or just rely on the token presence + refresh
-                    // For now, let's try to fetch settings to validate the token and get user info if possible,
-                    // or just assume logged in if token exists and is valid (refresh will handle expiration).
-                    // Ideally, the backend login response returns the user, and we should persist it or fetch it.
-                    // Let's fetch settings as a proxy for "am I logged in" and getting userId.
-                    // Actually, the login response gave us the user. We should probably store it in localStorage or fetch it.
-                    // Since we don't have a /me, let's use getSettings which returns UserSettings, which might not have email.
-                    // Let's just rely on the fact that if we have a token, we are likely logged in.
-                    // A better approach for a real app is a /me endpoint.
-                    // For this task, I'll assume if we can fetch settings, we are good.
-
-                    // Wait, the login response returns `user`. I should probably store that in localStorage too for easy access on reload,
-                    // or add a /me endpoint.
-                    // Let's add a simple /me endpoint to the backend or just use the stored user.
-                    // For now, I'll try to recover the user from localStorage if I saved it, or just fetch settings.
-
-                    const storedUser = localStorage.getItem('user');
-                    if (storedUser) {
-                        setUser(JSON.parse(storedUser));
-                    }
-
-                    // Validate token by making a request
-                    await api.getSettings();
-
+                    // Validate token and get user info
+                    await api.checkValid();
+                    const userData = await api.getUser();
+                    setUser(userData);
+                    localStorage.setItem('user', JSON.stringify(userData));
                 } catch (error) {
                     console.error("Auth check failed", error);
                     api.clearTokens();
                     setUser(null);
                     localStorage.removeItem('user');
+                    if (pathname !== '/login' && pathname !== '/register') {
+                        router.push('/login');
+                    }
                 }
             }
             setIsLoading(false);
@@ -98,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser: setUser }}>
             {children}
         </AuthContext.Provider>
     );

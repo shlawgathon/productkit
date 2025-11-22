@@ -102,6 +102,10 @@ fun Routing.registerAuthRoutes() {
                 println("Update success: $success")
                 call.respond(updated.copy(passwordHash = ""))
             }
+
+            get("/valid") {
+                call.respond(mapOf("valid" to true))
+            }
         }
     }
 }

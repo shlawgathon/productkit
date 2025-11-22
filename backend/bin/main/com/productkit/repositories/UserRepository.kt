@@ -17,11 +17,6 @@ class UserRepository {
 
     suspend fun findById(id: String): User? = col.findOne(User::_id eq id)
 
-    suspend fun update(user: User): Boolean {
-        val result = col.replaceOne(User::_id eq user._id, user)
-        return result.modifiedCount > 0
-    }
-
     suspend fun ensureIndexes() {
         // Unique index on email
         col.ensureUniqueIndex(User::email)
