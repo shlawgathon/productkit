@@ -9,6 +9,10 @@ data class User(
     val passwordHash: String,
     val shopifyStoreUrl: String? = null,
     val shopifyAccessToken: String? = null,
+    val firstName: String? = null,
+    val lastName: String? = null,
+    val bio: String? = null,
+    val profileImage: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 
