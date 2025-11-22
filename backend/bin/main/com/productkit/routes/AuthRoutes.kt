@@ -6,31 +6,17 @@ import com.productkit.repositories.UserRepository
 import com.productkit.utils.JwtUtil
 import io.ktor.http.*
 import io.ktor.server.application.*
-import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.request.*
-import kotlinx.coroutines.runBlocking
 
 private val userRepo = UserRepository()
 
 data class AuthRequest(val email: String, val password: String)
 data class RefreshRequest(val refreshToken: String)
-
-data class UpdateProfileRequest(
-    val firstName: String? = null,
-    val lastName: String? = null,
-    val bio: String? = null,
-    val profileImage: String? = null
-)
+class LogoutRequest
 
 fun Routing.registerAuthRoutes() {
-    runBlocking {
-        userRepo.ensureIndexes()
-    }
-
     route("/api/auth") {
         post<AuthRequest>("/register") { req ->
             if (!req.email.contains('@') || req.password.length < 6) {
@@ -72,40 +58,9 @@ fun Routing.registerAuthRoutes() {
             call.respond(mapOf("token" to token, "refreshToken" to refresh))
         }
 
-        post("/logout") {
+        post<LogoutRequest>("/logout") {
             // With stateless JWT, "logout" is a client-side operation or server-side token blacklist (not implemented)
             call.respond(mapOf("success" to true))
-        }
-
-        authenticate("auth-jwt") {
-            get("/me") {
-                val principal = call.principal<JWTPrincipal>()
-                val userId = principal?.subject ?: return@get call.respond(HttpStatusCode.Unauthorized)
-                val user = userRepo.findById(userId) ?: return@get call.respond(HttpStatusCode.Unauthorized)
-                call.respond(user.copy(passwordHash = ""))
-            }
-
-            put<UpdateProfileRequest>("/profile") { req ->
-                val principal = call.principal<JWTPrincipal>()
-                val userId = principal?.subject ?: return@put call.respond(HttpStatusCode.Unauthorized)
-                println("Updating profile for user: $userId with data: $req")
-
-                val existing = userRepo.findById(userId) ?: return@put call.respond(HttpStatusCode.NotFound)
-
-                val updated = existing.copy(
-                    firstName = req.firstName ?: existing.firstName,
-                    lastName = req.lastName ?: existing.lastName,
-                    bio = req.bio ?: existing.bio,
-                    profileImage = req.profileImage ?: existing.profileImage
-                )
-                val success = userRepo.update(updated)
-                println("Update success: $success")
-                call.respond(updated.copy(passwordHash = ""))
-            }
-
-            get("/valid") {
-                call.respond(mapOf("valid" to true))
-            }
         }
     }
 }

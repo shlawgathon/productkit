@@ -18,7 +18,7 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
     <div className={cn("w-full", className)}>
       <div className="relative flex items-center justify-between">
         {/* Connecting Line */}
-        <div className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 bg-muted">
+        <div className="absolute left-20 right-20 top-4 h-0.5 -translate-y-1/2 bg-muted">
           <div
             className="h-full bg-primary transition-all duration-500 ease-in-out"
             style={{
@@ -36,12 +36,12 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
             <div key={step.id} className="relative z-10 flex flex-col items-center">
               <div
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-300",
+                  "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-300 bg-background",
                   isCompleted
                     ? "border-primary bg-primary text-primary-foreground"
                     : isCurrent
-                    ? "border-primary bg-background ring-4 ring-primary/20"
-                    : "border-muted bg-background text-muted-foreground"
+                    ? "border-primary ring-4 ring-primary/20"
+                    : "border-muted text-muted-foreground"
                 )}
               >
                 {isCompleted ? (
@@ -50,7 +50,7 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
                   <span className="text-xs font-semibold">{index + 1}</span>
                 )}
               </div>
-              <div className="absolute -bottom-8 w-32 text-center">
+              <div className=" w-40 text-center">
                 <span
                   className={cn(
                     "text-xs font-medium transition-colors duration-300",
