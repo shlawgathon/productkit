@@ -63,6 +63,7 @@ function OnboardingContent() {
   };
 
   const handleBack = () => {
+    setFormError(null);
     if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
     }
