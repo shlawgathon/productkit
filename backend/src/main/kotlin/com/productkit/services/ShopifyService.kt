@@ -3,7 +3,6 @@ package com.productkit.services
 import ai.fal.client.ClientConfig
 import ai.fal.client.kt.*
 import com.productkit.utils.Config
-import io.github.cdimascio.dotenv.dotenv
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
@@ -44,14 +43,6 @@ class ShopifyService(
     )
 ) {
     private val httpClient = HttpClient(CIO)
-    private val dotenv = dotenv {
-        ignoreIfMissing = true
-        systemProperties = true
-        filename = ".env"
-    }
-
-    private val shopDomain: String? = dotenv["SHOPIFY_SHOP_DOMAIN"]
-    private val accessToken: String? = dotenv["SHOPIFY_ACCESS_TOKEN"]
 
     companion object {
         private const val LLM_MODEL = "fal-ai/llama-3-70b-instruct"
@@ -90,9 +81,16 @@ class ShopifyService(
 
     /**
      * Fetch reviews for a product from Shopify metafields
+     * @param productId The Shopify product ID
+     * @param shopDomain The user's Shopify store domain (e.g., "mystore.myshopify.com")
+     * @param accessToken The user's Shopify access token
      */
-    suspend fun getProductReviews(productId: String): ReviewsResponse {
-        val reviews = fetchReviewsFromShopify(productId)
+    suspend fun getProductReviews(
+        productId: String,
+        shopDomain: String?,
+        accessToken: String?
+    ): ReviewsResponse {
+        val reviews = fetchReviewsFromShopify(productId, shopDomain, accessToken)
         val analytics = analyzeReviews(reviews)
         
         return ReviewsResponse(
@@ -104,9 +102,13 @@ class ShopifyService(
     /**
      * Fetch reviews from Shopify SPR app metafields
      */
-    private suspend fun fetchReviewsFromShopify(productId: String): List<Review> {
+    private suspend fun fetchReviewsFromShopify(
+        productId: String,
+        shopDomain: String?,
+        accessToken: String?
+    ): List<Review> {
         if (shopDomain.isNullOrBlank() || accessToken.isNullOrBlank()) {
-            println("[ShopifyService] Shopify credentials missing, using mock data")
+            println("[ShopifyService] Shopify credentials missing for user, using mock data")
             return MOCK_REVIEWS
         }
 

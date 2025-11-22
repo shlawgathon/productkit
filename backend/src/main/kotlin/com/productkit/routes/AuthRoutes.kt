@@ -23,7 +23,9 @@ data class UpdateProfileRequest(
     val firstName: String? = null,
     val lastName: String? = null,
     val bio: String? = null,
-    val profileImage: String? = null
+    val profileImage: String? = null,
+    val shopifyStoreUrl: String? = null,
+    val shopifyAccessToken: String? = null
 )
 
 fun Routing.registerAuthRoutes() {
@@ -96,7 +98,9 @@ fun Routing.registerAuthRoutes() {
                     firstName = req.firstName ?: existing.firstName,
                     lastName = req.lastName ?: existing.lastName,
                     bio = req.bio ?: existing.bio,
-                    profileImage = req.profileImage ?: existing.profileImage
+                    profileImage = req.profileImage ?: existing.profileImage,
+                    shopifyStoreUrl = req.shopifyStoreUrl ?: existing.shopifyStoreUrl,
+                    shopifyAccessToken = req.shopifyAccessToken ?: existing.shopifyAccessToken
                 )
                 val success = userRepo.update(updated)
                 println("Update success: $success")

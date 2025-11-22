@@ -22,6 +22,7 @@ data class Product(
     val name: String,
     val description: String? = null,
     val originalImages: List<String> = emptyList(),
+    val pdfGuides: List<String> = emptyList(),
     val status: ProductStatus = ProductStatus.DRAFT,
     val generatedAssets: GeneratedAssets? = null,
     val shopifyProductId: String? = null,

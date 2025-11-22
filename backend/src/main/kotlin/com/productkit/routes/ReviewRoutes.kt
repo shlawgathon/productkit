@@ -1,13 +1,16 @@
 package com.productkit.routes
 
+import com.productkit.repositories.UserRepository
 import com.productkit.services.ShopifyService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 private val shopifyService = ShopifyService()
+private val userRepo = UserRepository()
 
 fun Route.registerReviewRoutes() {
     route("/api/reviews") {
@@ -16,6 +19,9 @@ fun Route.registerReviewRoutes() {
          * Fetch reviews and analytics for a product
          */
         get {
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.subject ?: return@get call.respond(HttpStatusCode.Unauthorized)
+            
             val productId = call.request.queryParameters["productId"]
             
             if (productId.isNullOrBlank()) {
@@ -26,7 +32,12 @@ fun Route.registerReviewRoutes() {
             }
 
             try {
-                val response = shopifyService.getProductReviews(productId)
+                // Fetch user's Shopify credentials
+                val user = userRepo.findById(userId)
+                val shopDomain = user?.shopifyStoreUrl
+                val accessToken = user?.shopifyAccessToken
+                
+                val response = shopifyService.getProductReviews(productId, shopDomain, accessToken)
                 call.respond(HttpStatusCode.OK, response)
             } catch (e: Exception) {
                 println("[ReviewRoutes] Error fetching reviews: ${e.message}")
