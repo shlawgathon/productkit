@@ -35,64 +35,37 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [reviews, setReviews] = useState<any[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [sentimentAnalysis, setSentimentAnalysis] = useState<any>({
+    summary: "No reviews available for analysis yet.",
+    keywords: [],
+    improvement: "N/A"
+  });
 
   // Fetch reviews on mount
   useEffect(() => {
-    fetch(`/api/reviews?productId=${id}`)
-      .then(res => res.json())
-      .then(data => {
+    const fetchReviews = async () => {
+      try {
+        const data = await api.getReviews(id);
         setReviews(data.reviews || []);
-        setLoadingReviews(false);
-      })
-      .catch(err => {
+        setSentimentAnalysis(data.analytics || {
+          summary: "No reviews available for analysis yet.",
+          keywords: [],
+          improvement: "N/A"
+        });
+      } catch (err) {
         console.error("Failed to fetch reviews", err);
+      } finally {
         setLoadingReviews(false);
-      });
+      }
+    };
+
+    fetchReviews();
   }, [id]);
 
   // Calculate analytics
   const averageRating = reviews.length > 0
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : "0.0";
-
-  // Dynamic "AI" simulation based on actual reviews
-  const sentimentAnalysis = (() => {
-    if (reviews.length === 0) return {
-      summary: "No reviews available for analysis yet.",
-      keywords: [],
-      improvement: "N/A"
-    };
-
-    const allText = reviews.map(r => r.body + " " + r.title).join(" ").toLowerCase();
-
-    // Simple keyword extraction simulation
-    const potentialKeywords = ["comfortable", "quality", "sleek", "modern", "great", "love", "perfect", "leather", "design", "sturdy"];
-    const foundKeywords = potentialKeywords
-      .filter(w => allText.includes(w))
-      .slice(0, 5)
-      .map(w => w.charAt(0).toUpperCase() + w.slice(1));
-
-    // Determine summary based on rating and keywords
-    const avg = parseFloat(averageRating);
-    let summary = "Customer feedback is limited.";
-    if (avg >= 4.8) summary = "Customers are overwhelmingly positive, frequently praising the exceptional quality and design.";
-    else if (avg >= 4.0) summary = "The majority of customers are satisfied, highlighting the product's aesthetic and comfort.";
-    else if (avg >= 3.0) summary = "Reviews are generally positive, though some customers have mixed feelings about the value.";
-    else summary = "Recent feedback indicates some customers are facing issues with the product.";
-
-    // Identify improvements (mock logic looking for negative context words)
-    const negativeContexts = ["shipping", "delay", "price", "expensive", "color", "size"];
-    const foundIssues = negativeContexts.filter(w => allText.includes(w));
-    const improvement = foundIssues.length > 0
-      ? `Some users noted concerns regarding ${foundIssues.join(", ")}.`
-      : "No significant recurring complaints found.";
-
-    return {
-      summary,
-      keywords: foundKeywords.length > 0 ? foundKeywords : ["Design", "Quality"],
-      improvement
-    };
-  })();
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -217,7 +190,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     {loadingReviews ? (
                       <span className="text-sm text-muted-foreground">Loading...</span>
                     ) : (
-                      sentimentAnalysis.keywords.map((keyword, i) => (
+                      sentimentAnalysis.keywords.map((keyword: string, i: number) => (
                         <Badge key={i} variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
                           {keyword}
                         </Badge>
@@ -273,19 +246,19 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     </div>
                     <div>
                       <p className="font-medium text-sm">AR Model</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" asChild>
-                        <a href={product.generatedAssets.arModelUrl} download>
-                          <Download className="h-4 w-4" />
-                        </a>
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={product.generatedAssets.arModelUrl} download>
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
               {!product.generatedAssets?.arModelUrl && (
                 <p className="text-sm text-muted-foreground">No assets generated yet.</p>

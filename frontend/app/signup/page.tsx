@@ -18,12 +18,12 @@ export default function SignUpPage() {
     setIsLoading(true);
     setError("");
     const formData = new FormData(e.currentTarget);
-    const username = formData.get("username") as string;
+    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     try {
-      // Using username instead of email - backend may need to be updated to accept username
-      await register({ username, password });
+      // Using email instead of email - backend may need to be updated to accept email
+      await register({ email, password });
     } catch (err: any) {
       setError(err.message || "Failed to create account");
     } finally {
@@ -64,12 +64,12 @@ export default function SignUpPage() {
         >
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">email</Label>
               <Input
-                id="username"
-                name="username"
+                id="email"
+                name="email"
                 type="text"
-                autoComplete="username"
+                autoComplete="email"
                 required
                 minLength={3}
                 maxLength={20}

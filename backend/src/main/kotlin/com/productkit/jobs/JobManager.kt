@@ -47,25 +47,31 @@ object JobManager {
 
         val job = scope.launch {
             try {
+                println("[JOB_PROCESSING] Starting job $jobId for product $productId")
                 status.status = "RUNNING"
                 status.progress = 5
                 val product = productRepo.findById(productId) ?: run {
+                    println("[JOB_PROCESSING] Product $productId not found")
                     status.status = "ERROR"; return@launch
                 }
 
                 var imageData: ImageData? = null
                 if ("hero" in req.assetTypes || "lifestyle" in req.assetTypes || "detail" in req.assetTypes) {
+                    println("[JOB_PROCESSING] Generating images for product $productId (types: ${req.assetTypes})")
                     val heroCount = req.count["hero"] ?: 5
                     val baseImage = product.originalImages.firstOrNull()
                     if (baseImage != null) {
                         val images = fal.generateProductImages(productId, baseImage, type = "hero", count = heroCount)
                         imageData = images
+                    } else {
+                        println("[JOB_PROCESSING] No base image found for product $productId")
                     }
                     status.progress = 40
                 }
 
                 var assets3d: String? = null
                 if ("360" in req.assetTypes) {
+                    println("[JOB_PROCESSING] Generating 3D model for product $productId")
                     val baseImage = product.originalImages.firstOrNull()
                     if (baseImage != null) {
                         val modelUrl = nvidia.generate3DModel(baseImage)
@@ -82,7 +88,10 @@ object JobManager {
                 status.generated3dAssets = assets3d
                 status.progress = 100
                 status.status = "COMPLETED"
+                println("[JOB_PROCESSING] Job $jobId completed successfully")
             } catch (e: Exception) {
+                println("[JOB_PROCESSING] Job $jobId failed: ${e.message}")
+                e.printStackTrace()
                 status.status = "ERROR"
             }
         }

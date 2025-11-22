@@ -48,6 +48,16 @@ fun Route.registerProductRoutes() {
                     status = ProductStatus.PROCESSING
                 )
             )
+
+            // Enqueue job processing
+            com.productkit.jobs.JobManager.enqueueAssetsGeneration(
+                product._id,
+                com.productkit.jobs.GenerationRequest(
+                    assetTypes = listOf("hero"),
+                    count = mapOf("hero" to 4)
+                )
+            )
+
             call.respond(mapOf("productId" to product._id, "status" to product.status.name))
         }
 

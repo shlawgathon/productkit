@@ -104,6 +104,7 @@ fun Routing.registerAuthRoutes() {
             }
 
             get("/valid") {
+                println("VALID")
                 call.respond(mapOf("valid" to true))
             }
         }

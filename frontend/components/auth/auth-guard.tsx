@@ -8,23 +8,28 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if auth token exists in cookies
+    // Check if auth token exists
     const checkAuth = () => {
-      const cookies = document.cookie.split(";");
-      const tokenCookie = cookies.find((cookie) =>
-        cookie.trim().startsWith("auth-token=")
-      );
-      
-      if (!tokenCookie) {
+      console.log("[AuthGuard] Starting auth check");
+
+      // Debug: Check localStorage
+      const localToken = localStorage.getItem('accessToken');
+      console.log("[AuthGuard] localStorage accessToken:", localToken ? "Present" : "Missing");
+
+      // Debug: Check cookies (just in case)
+      const cookies = document.cookie;
+      console.log("[AuthGuard] All cookies:", cookies);
+
+      if (!localToken) {
+        console.log("[AuthGuard] No token found, redirecting to login");
         // Get redirect from URL or default to dashboard
         const urlParams = new URLSearchParams(window.location.search);
         const redirect = urlParams.get("redirect") || "/dashboard";
         router.push(`/login?redirect=${encodeURIComponent(redirect)}`);
         setIsAuthenticated(false);
       } else {
+        console.log("[AuthGuard] Token found, allowing access");
         setIsAuthenticated(true);
-        // TODO: Add actual token validation against backend API
-        // Example: await fetch('/api/auth/verify', { headers: { Authorization: `Bearer ${token}` } })
       }
     };
 

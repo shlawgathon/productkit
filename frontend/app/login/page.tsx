@@ -17,28 +17,22 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // TEMPORARY DEV BYPASS - Remove before production!
-  useEffect(() => {
-    const DEV_BYPASS = true; // Set to false to require login
-    if (DEV_BYPASS) {
-      console.log("🚧 DEV MODE: Bypassing login and redirecting to dashboard");
-      router.push(redirect);
-    }
-  }, [router, redirect]);
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
     const formData = new FormData(e.currentTarget);
-    const username = formData.get("username") as string;
+    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     try {
-      // Using username instead of email - backend may need to be updated to accept username
-      await login({ username, password });
+      console.log("[Login] Submitting login request for:", email);
+      // Using email instead of email - backend may need to be updated to accept email
+      await login({ email, password });
+      console.log("[Login] Login successful, redirecting to:", redirect);
       router.push(redirect);
     } catch (err: any) {
+      console.error("[Login] Login error:", err);
       setError(err.message || "Failed to login");
     } finally {
       setIsLoading(false);
@@ -78,12 +72,12 @@ function LoginForm() {
         >
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">email</Label>
               <Input
-                id="username"
-                name="username"
+                id="email"
+                name="email"
                 type="text"
-                autoComplete="username"
+                autoComplete="email"
                 required
                 placeholder="johndoe"
               />

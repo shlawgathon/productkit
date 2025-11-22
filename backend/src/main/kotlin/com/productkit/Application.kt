@@ -7,6 +7,7 @@ import com.productkit.routes.registerSettingsRoutes
 import com.productkit.routes.registerWebsocketRoutes
 import com.productkit.routes.registerAssetGenerationRoutes
 import com.productkit.routes.registerUploadRoutes
+import com.productkit.routes.registerReviewRoutes
 import com.productkit.utils.Config
 import com.productkit.utils.JwtUtil
 import io.ktor.serialization.jackson.*
@@ -80,6 +81,7 @@ fun Application.module() {
                 route("/") {
                     registerProductRoutes()
                     registerSettingsRoutes()
+                    registerReviewRoutes()
                 }
                 // Other secured routes will be registered here (Shopify, Site, Settings, Upload)
             }
