@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const redirect = searchParams.get("redirect") || "/dashboard";
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,11 +22,13 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
+    const username = formData.get("username") as string;
     const password = formData.get("password") as string;
 
     try {
-      await login({ email, password });
+      // Using username instead of email - backend may need to be updated to accept username
+      await login({ username, password });
+      router.push(redirect);
     } catch (err: any) {
       setError(err.message || "Failed to login");
     } finally {
@@ -61,16 +67,16 @@ export default function LoginPage() {
           className="mt-8 space-y-6"
           onSubmit={handleSubmit}
         >
-          <div className="space-y-4 rounded-md shadow-sm">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 required
-                placeholder="name@example.com"
+                placeholder="johndoe"
               />
             </div>
             <div className="space-y-2">
@@ -110,3 +116,14 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
+  );
+}
