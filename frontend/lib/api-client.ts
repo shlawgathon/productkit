@@ -73,7 +73,14 @@ class ApiClient {
 
         console.log(`[API Request] ${options.method || 'GET'} ${url}`, options.body ? JSON.parse(options.body as string) : '');
 
-        let response = await fetch(url, { ...options, headers });
+        let response;
+        try {
+            response = await fetch(url, { ...options, headers });
+        } catch (error) {
+            // Network error (server not running, no internet, etc.)
+            console.warn(`[API] Network error - server may be offline:`, error);
+            throw new Error('Unable to connect to server. Please check if the backend is running.');
+        }
 
         console.log(`[API Response] ${response.status} ${url}`);
 
@@ -84,7 +91,12 @@ class ApiClient {
             if (refreshSuccess) {
                 // Retry original request with new token
                 headers['Authorization'] = `Bearer ${this.accessToken}`;
-                response = await fetch(url, { ...options, headers });
+                try {
+                    response = await fetch(url, { ...options, headers });
+                } catch (error) {
+                    console.warn(`[API] Network error on retry:`, error);
+                    throw new Error('Unable to connect to server');
+                }
             } else {
                 this.clearTokens();
                 window.location.href = '/login'; // Redirect to login
@@ -234,11 +246,17 @@ class ApiClient {
             headers['Authorization'] = `Bearer ${this.accessToken}`;
         }
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: formData,
-        });
+        let response;
+        try {
+            response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: formData,
+            });
+        } catch (error) {
+            console.warn(`[API] Upload failed - network error:`, error);
+            throw new Error('Unable to connect to server for upload');
+        }
 
         if (!response.ok) {
             throw new Error('Upload failed');
