@@ -57,7 +57,7 @@ fun Route.registerUploadRoutes() {
                             println("Upload successful.")
 
                             // Let's construct it safely.
-                            fileUrl = "${Config.DO_SPACES_ENDPOINT.replace("https://", "https://${Config.DO_SPACES_BUCKET}.")}/$fileName"
+                            fileUrl = "${Config.DO_SPACES_ENDPOINT}/$fileName"
                             // Fix double slash if endpoint has trailing slash
                             if (Config.DO_SPACES_ENDPOINT.endsWith("/")) {
                                 fileUrl = "${Config.DO_SPACES_ENDPOINT}$fileName"
