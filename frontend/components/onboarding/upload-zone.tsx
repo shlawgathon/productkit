@@ -57,7 +57,7 @@ export function UploadZone({ onFilesSelected, className }: UploadZoneProps) {
             )} />
           </div>
           <h3 className="text-lg font-semibold">
-            {isDragActive ? "Drop files here" : "Upload Product Images"}
+            {isDragActive ? "Drop file here" : "Upload Header Image"}
           </h3>
           <p className="mt-2 text-sm text-muted-foreground max-w-xs">
             Drag and drop your images here, or click to select files.

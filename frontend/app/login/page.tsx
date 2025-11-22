@@ -6,44 +6,49 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
-import { Suspense } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { useState, Suspense } from "react";
 
 function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const redirect = searchParams.get("redirect") || "/dashboard";
+  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // TODO: Add form submission handler for MongoDB integration
-  // Example structure:
-  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  //   e.preventDefault();
-  //   const formData = new FormData(e.currentTarget);
-  //   const username = formData.get("username") as string;
-  //   const password = formData.get("password") as string;
-  //   
-  //   // MongoDB integration will go here
-  //   // const response = await fetch('/api/auth/login', { 
-  //   //   method: 'POST', 
-  //   //   body: JSON.stringify({ username, password }) 
-  //   // });
-  //   // const { token } = await response.json();
-  //   // document.cookie = `auth-token=${token}; path=/; max-age=3600`;
-  //   // router.push(redirect);
-  // };
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    const formData = new FormData(e.currentTarget);
+    const username = formData.get("username") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      // Using username instead of email - backend may need to be updated to accept username
+      await login({ username, password });
+      router.push(redirect);
+    } catch (err: any) {
+      setError(err.message || "Failed to login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center">
-           {/* Logo */}
-           <div className="relative h-16 w-16 overflow-hidden mb-2">
-             {/* eslint-disable-next-line @next/next/no-img-element */}
-               <img 
-               src="/logo.png" 
-               alt="ProductKit Logo" 
-               className="object-contain h-full w-full"
-               />
-           </div>
+          {/* Logo */}
+          <div className="relative h-16 w-16 overflow-hidden mb-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon.png"
+              alt="ProductKit Logo"
+              className="object-contain h-full w-full"
+            />
+          </div>
           <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">
             Sign in to your account
           </h2>
@@ -57,11 +62,10 @@ function LoginForm() {
             </Link>
           </p>
         </div>
-        
-        <form 
+
+        <form
           className="mt-8 space-y-6"
-          // TODO: Add onSubmit handler when implementing MongoDB integration
-          // onSubmit={handleSubmit}
+          onSubmit={handleSubmit}
         >
           <div className="space-y-4">
             <div className="space-y-2">
@@ -73,7 +77,6 @@ function LoginForm() {
                 autoComplete="username"
                 required
                 placeholder="johndoe"
-                // TODO: Add onChange handler for real-time validation if needed
               />
             </div>
             <div className="space-y-2">
@@ -85,31 +88,28 @@ function LoginForm() {
                 autoComplete="current-password"
                 required
                 placeholder="••••••••"
-                // TODO: Add onChange handler for real-time validation if needed
               />
             </div>
           </div>
 
-          <Button 
+          {error && (
+            <div className="text-red-500 text-sm text-center">{error}</div>
+          )}
+
+          <Button
             type="submit"
             className="w-full"
-            onClick={(e) => {
-              // Placeholder - prevent default form submission
-              e.preventDefault();
-              console.log("Login clicked - will redirect to:", redirect);
-              // TODO: Replace with actual form submission handler
-              // After successful login, redirect to the intended destination
-            }}
+            disabled={isLoading}
           >
-            Sign in
+            {isLoading ? "Signing in..." : "Sign in"}
           </Button>
         </form>
-        
-         <div className="mt-6 text-center text-sm">
-            <Link href="/" className="flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground">
-                 <ArrowLeft className="h-4 w-4" />
-                 Back to Home
-            </Link>
+
+        <div className="mt-6 text-center text-sm">
+          <Link href="/" className="flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+          </Link>
         </div>
       </div>
     </div>
@@ -127,4 +127,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

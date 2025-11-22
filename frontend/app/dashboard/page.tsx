@@ -1,33 +1,58 @@
+"use client";
+
 import { ProductCard, type Product } from "@/components/dashboard/product-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { FAB } from "@/components/dashboard/fab";
-
-// Mock data for demonstration
-const products: Product[] = [
-  {
-    id: "1",
-    name: "Minimalist Chair",
-    status: "active",
-    thumbnailUrl: "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&q=80&w=1000",
-    lastModified: "2 mins ago",
-  },
-  {
-    id: "2",
-    name: "Smart Watch",
-    status: "generating",
-    thumbnailUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=1000",
-    lastModified: "1 hour ago",
-  },
-  {
-    id: "3",
-    name: "Wireless Headphones",
-    status: "draft",
-    thumbnailUrl: "",
-    lastModified: "1 day ago",
-  },
-];
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
+import { useAuth } from "@/components/auth-provider";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!user) return;
+      try {
+        const data = await api.getProducts();
+        // Backend returns { products: [...] }
+        const mappedProducts = (data.products || []).map((p: any) => ({
+          id: p._id,
+          name: p.name,
+          slug: p.name.toLowerCase().replace(/ /g, '-'),
+          status: mapStatus(p.status),
+          thumbnailUrl: p.originalImages?.[0] || "",
+          lastModified: new Date(p.updatedAt).toLocaleDateString(),
+        }));
+        setProducts(mappedProducts);
+      } catch (error) {
+        console.error("Failed to fetch products", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [user]);
+
+  const mapStatus = (backendStatus: string): "active" | "draft" | "generating" => {
+    switch (backendStatus) {
+      case "COMPLETED":
+        return "active";
+      case "DRAFT":
+      case "ERROR":
+        return "draft";
+      default:
+        return "generating";
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading products...</div>;
+  }
+
   return (
     <div className="space-y-6 pb-20">
       <div className="flex items-center justify-between">
@@ -38,7 +63,7 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
-      
+
       {products.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
@@ -48,7 +73,7 @@ export default function DashboardPage() {
       ) : (
         <EmptyState />
       )}
-      
+
       <FAB />
     </div>
   );

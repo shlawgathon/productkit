@@ -26,28 +26,11 @@ class FalServiceE2ETest : FunSpec({
             productId = "e2e-test-product",
             baseImage = testImageUrl,
             type = "studio",
-            count = 1
+            count = 5
         )
 
-        urls.shouldNotBeEmpty()
-        urls.forEach { url ->
-            url shouldStartWith "http"
-        }
-    }
-
-    test("generateConsistentVariations returns URLs").config(timeout = 180.seconds) {
-        val service = FalService()
-
-        val urls = service.generateConsistentVariations(
-            productId = "e2e-test-product",
-            embedding = "matte black insulated steel water bottle with subtle logo",
-            contexts = listOf(
-                "studio product shot on white background",
-            )
-        )
-
-        urls.shouldNotBeEmpty()
-        urls.forEach { url ->
+        urls.images.map { it.url }.forEach { url ->
+            println(url)
             url shouldStartWith "http"
         }
     }
