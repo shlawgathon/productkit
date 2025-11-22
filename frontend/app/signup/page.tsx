@@ -18,11 +18,12 @@ export default function SignUpPage() {
     setIsLoading(true);
     setError("");
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
+    const username = formData.get("username") as string;
     const password = formData.get("password") as string;
 
     try {
-      await register({ email, password });
+      // Using username instead of email - backend may need to be updated to accept username
+      await register({ username, password });
     } catch (err: any) {
       setError(err.message || "Failed to create account");
     } finally {
@@ -61,16 +62,19 @@ export default function SignUpPage() {
           className="mt-8 space-y-6"
           onSubmit={handleSubmit}
         >
-          <div className="space-y-4 rounded-md shadow-sm">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 required
-                placeholder="name@example.com"
+                minLength={3}
+                maxLength={20}
+                pattern="[a-zA-Z0-9_]+"
+                placeholder="johndoe"
               />
             </div>
             <div className="space-y-2">
@@ -81,12 +85,9 @@ export default function SignUpPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={6}
+                minLength={8}
                 placeholder="••••••••"
               />
-              <p className="text-xs text-muted-foreground">
-                Password must be at least 6 characters long
-              </p>
             </div>
           </div>
 
@@ -113,4 +114,3 @@ export default function SignUpPage() {
     </div>
   );
 }
-
