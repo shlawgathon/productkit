@@ -1,11 +1,11 @@
 package com.productkit.services
 
-import com.channelape.shopify.sdk.ShopifySdk
-import com.channelape.shopify.sdk.model.ProductRequest
-import com.channelape.shopify.sdk.model.Product as ShopifyProduct
-import com.channelape.shopify.sdk.model.ProductImage
 import com.productkit.models.GeneratedAssets
 import com.productkit.models.Product
+import com.shopify.ShopifySdk
+import com.shopify.model.Image
+import com.shopify.model.ShopifyProduct
+import com.shopify.model.ShopifyProductCreationRequest
 
 class ShopifyService {
 
@@ -33,13 +33,11 @@ class ShopifyService {
 
         try {
             println("[SHOPIFY] Creating product '${product.name}' on Shopify ($shopDomain)...")
-            val shopifyProduct = ShopifyProduct()
-            shopifyProduct.title = product.name
-            
+
             // Construct HTML description from copy
             val descriptionHtml = buildString {
                 append("<p>${assets.productCopy.description}</p>")
-                
+
                 if (assets.productCopy.features.isNotEmpty()) {
                     append("<h3>Features</h3><ul>")
                     assets.productCopy.features.forEach { feature ->
@@ -47,7 +45,7 @@ class ShopifyService {
                     }
                     append("</ul>")
                 }
-                
+
                 if (assets.productCopy.benefits.isNotEmpty()) {
                     append("<h3>Benefits</h3><ul>")
                     assets.productCopy.benefits.forEach { benefit ->
@@ -56,31 +54,28 @@ class ShopifyService {
                     append("</ul>")
                 }
             }
-            shopifyProduct.bodyHtml = descriptionHtml
-            shopifyProduct.productType = "Generated Product"
-            shopifyProduct.vendor = "ProductKit"
-            
-            // Add images
-            val images = assets.heroImages.map { url ->
-                val image = ProductImage()
-                image.src = url
-                image
-            }
-            shopifyProduct.images = images
 
-            // Create request
-            val request = ProductRequest()
-            request.product = shopifyProduct
+            val createdProduct = shopifySdk.createProduct(
+                ShopifyProductCreationRequest.newBuilder()
+                    .withTitle(product.name)
+                    .withMetafieldsGlobalTitleTag(product.name).withProductType("Generated Product").withBodyHtml(descriptionHtml)
+                    .withMetafieldsGlobalDescriptionTag(product.description)
+                    .withVendor("ProductKit")
+                    .withTags(setOf("productkit"))
+                    .withSortedOptionNames(listOf())
+                    .withImageSources(assets.heroImages)
+                    .withVariantCreationRequests(listOf())
+                    .withPublished(true)
+                    .build()
+            )
 
-            val createdProduct = shopifySdk.createProduct(request)
-            
-            val shopUrl = "https://${shopDomain}.myshopify.com/products/${createdProduct.handle}"
-            
+            val shopUrl = "https://${shopDomain}.myshopify.com/products/${createdProduct.id}"
+
             println("[SHOPIFY] Product created successfully: ${createdProduct.id} ($shopUrl)")
-            
+
             return ShopifyProductResult(
                 id = createdProduct.id.toString(),
-                handle = createdProduct.handle,
+                handle = createdProduct.id,
                 url = shopUrl
             )
         } catch (e: Exception) {

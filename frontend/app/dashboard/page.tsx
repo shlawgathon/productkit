@@ -25,6 +25,10 @@ export default function DashboardPage() {
           status: mapStatus(p.status),
           thumbnailUrl: p.originalImages?.[0] || "",
           lastModified: new Date(p.updatedAt).toLocaleDateString(),
+          generatedAssets: p.generatedAssets ? {
+            arModelUrl: p.generatedAssets.arModelUrl,
+          } : undefined,
+          shopifyStorefrontUrl: p.shopifyStorefrontUrl,
         }));
         setProducts(mappedProducts);
       } catch (error) {

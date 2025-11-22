@@ -49,9 +49,16 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <div className="group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
-        {/* Image Container */}
+        {/* Image/3D Model Container */}
         <div className="aspect-video w-full overflow-hidden bg-muted relative">
-          {product.thumbnailUrl ? (
+          {product.generatedAssets?.arModelUrl ? (
+            <GlbViewer
+              url={product.generatedAssets.arModelUrl}
+              width="100%"
+              height="100%"
+              className="border-0"
+            />
+          ) : product.thumbnailUrl ? (
             <Image
               src={product.thumbnailUrl}
               alt={product.name}
@@ -128,12 +135,6 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </div>
 
-      {/* GLB 3D Model Viewer */}
-      {product.generatedAssets?.arModelUrl && (
-        <div className="mt-4 flex justify-center">
-          <GlbViewer url={product.generatedAssets.arModelUrl} width={300} height={300} />
-        </div>
-      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
