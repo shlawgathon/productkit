@@ -230,8 +230,35 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            )}\n          </div>
+
+          {/* 3D AR Model Preview */}
+          {product.generatedAssets?.arModelUrl && (
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+              <div className="p-6 border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-purple-600 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-lg">3D AR Model Preview</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2 ml-8">
+                  Interactive 3D model - drag to rotate, scroll to zoom
+                </p>
+              </div>
+              <div className="p-6">
+                <GlbViewer
+                  url={product.generatedAssets.arModelUrl}
+                  width="100%"
+                  height={500}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar - Details & Assets */}

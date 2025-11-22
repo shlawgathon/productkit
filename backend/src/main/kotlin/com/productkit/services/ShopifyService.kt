@@ -58,7 +58,9 @@ class ShopifyService {
             val createdProduct = shopifySdk.createProduct(
                 ShopifyProductCreationRequest.newBuilder()
                     .withTitle(product.name)
-                    .withMetafieldsGlobalTitleTag(product.name).withProductType("Generated Product").withBodyHtml(descriptionHtml)
+                    .withMetafieldsGlobalTitleTag(product.name)
+                    .withProductType("Generated Product")
+                    .withBodyHtml(descriptionHtml)
                     .withMetafieldsGlobalDescriptionTag(product.description)
                     .withVendor("ProductKit")
                     .withTags(setOf("productkit"))
