@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Stepper } from "@/components/onboarding/stepper";
 import { UploadZone } from "@/components/onboarding/upload-zone";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, ArrowLeft, Sparkles, Image as ImageIcon, FileText, X } from "lucide-react";
 import Link from "next/link";
+import { api } from "@/lib/api-client";
 
 const steps = [
   { id: "upload", title: "Upload Header Image" },
@@ -20,12 +21,14 @@ const steps = [
 function OnboardingContent() {
   const searchParams = useSearchParams();
   const slug = searchParams.get("slug");
+  const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
   const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -57,6 +60,58 @@ function OnboardingContent() {
 
   const removePdf = (index: number) => {
     setPdfFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCreateProduct = async () => {
+    setIsSubmitting(true);
+    try {
+      const imageUrls: string[] = [];
+
+      // Upload files one by one
+      for (const file of files) {
+        try {
+          const uploadRes = await api.uploadFile(file);
+          if (uploadRes.url) {
+            imageUrls.push(uploadRes.url);
+          }
+        } catch (e) {
+          console.error("Failed to upload file", file.name, e);
+        }
+      }
+
+      // Upload PDF files
+      const pdfUrls: string[] = [];
+      for (const file of pdfFiles) {
+        try {
+          const uploadRes = await api.uploadFile(file);
+          if (uploadRes.url) {
+            pdfUrls.push(uploadRes.url);
+          }
+        } catch (e) {
+          console.error("Failed to upload PDF", file.name, e);
+        }
+      }
+
+      // Fallback if no images uploaded (or failed)
+      if (imageUrls.length === 0) {
+        imageUrls.push("https://placehold.co/600x400?text=No+Image+Uploaded");
+      }
+
+      const response = await api.createProduct({
+        name: productName,
+        description: productDescription,
+        images: imageUrls,
+        pdfGuides: pdfUrls // Include PDF guides
+      });
+
+      // Redirect to the product page or status page
+      router.push(`/products/${response.productId}`);
+    } catch (error) {
+      console.error("Failed to create product", error);
+      // Handle error (show toast, etc.)
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -244,12 +299,15 @@ function OnboardingContent() {
               </Button>
 
               {currentStep === steps.length - 1 ? (
-                <Link href="/status">
-                  <Button size="lg" className="gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all">
-                    <Sparkles className="h-4 w-4" />
-                    Generate Assets
-                  </Button>
-                </Link>
+                <Button
+                  size="lg"
+                  className="gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                  onClick={handleCreateProduct}
+                  disabled={isSubmitting}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {isSubmitting ? "Creating..." : "Generate Assets"}
+                </Button>
               ) : (
                 <Button onClick={handleNext} size="lg" className="gap-2">
                   Next Step

@@ -6,6 +6,7 @@ import com.productkit.routes.registerProductRoutes
 import com.productkit.routes.registerSettingsRoutes
 import com.productkit.routes.registerWebsocketRoutes
 import com.productkit.routes.registerAssetGenerationRoutes
+import com.productkit.routes.registerUploadRoutes
 import com.productkit.utils.Config
 import com.productkit.utils.JwtUtil
 import io.ktor.serialization.jackson.*
@@ -14,7 +15,6 @@ import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.defaultheaders.*
 import io.ktor.server.plugins.contentnegotiation.*
@@ -27,6 +27,7 @@ import io.ktor.server.request.*
 import org.slf4j.event.Level
 import java.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 fun main() {
     embeddedServer(Netty, port = Config.PORT) { module() }.start(wait = true)
@@ -34,7 +35,6 @@ fun main() {
 
 fun Application.module() {
     install(DefaultHeaders)
-    install(CallLogging) { level = Level.INFO }
     install(ContentNegotiation) { jackson() }
     install(CORS) {
         allowHost(Config.FRONTEND_HOST, listOf("https"))
@@ -54,7 +54,7 @@ fun Application.module() {
             call.respond(io.ktor.http.HttpStatusCode.InternalServerError, mapOf("error" to (cause.message ?: "internal error")))
         }
     }
-    install(WebSockets) { pingPeriod = Duration.ofSeconds(30) }
+    install(WebSockets) { pingPeriod = 30.seconds }
     install(RateLimit) {
         register(name = RateLimitName("per-user")) {
             rateLimiter(limit = 100, refillPeriod = 1.minutes)
@@ -87,5 +87,6 @@ fun Application.module() {
         // WebSockets do not require auth for now; can be upgraded later
         registerWebsocketRoutes()
         registerAssetGenerationRoutes()
+        registerUploadRoutes()
     }
 }
