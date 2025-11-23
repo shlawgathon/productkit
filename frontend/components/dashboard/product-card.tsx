@@ -48,7 +48,7 @@ interface ProductCardProps {
 export function ProductCard({ product, isFavorite = false, onToggleFavorite }: ProductCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  const router = useRouter();
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
@@ -134,7 +134,7 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite }: P
                 : product.status.charAt(0).toUpperCase() + product.status.slice(1)}
             </Badge>
           </div>
-          
+
           {/* Favorite Star */}
           <div className="absolute top-3 right-3">
             <Button
