@@ -184,11 +184,11 @@ class FalService(
     suspend fun generate3DModelGLB(baseImage: String): String {
         // Prepare input for omnipart model. The model expects an input image URL.
         val input = mapOf(
-            "image_url" to baseImage
+            "input_image_url" to baseImage
         )
         // Submit the job to the omnipart endpoint.
         val submission = fal.queue.submit(
-            endpointId = "tripo3d/tripo/v2.5/image-to-3d",
+            endpointId = "fal-ai/omnipart",
             input = input,
             options = SubmitOptions()
         )
@@ -197,10 +197,11 @@ class FalService(
         while (attempts < 100) { // wait up to ~30 seconds
             try {
                 val result = fal.queue.result(
-                    endpointId = "tripo3d/tripo/v2.5/image-to-3d",
+                    endpointId = "fal-ai/omnipart",
                     requestId = submission.requestId
                 )
-                return result.data.asJsonObject.get("model_mesh").asJsonObject.get("url").asString
+                // Assuming result.data contains a field "url" with the GLB location.
+                return result.data.get("full_model_mesh").asJsonObject.get("url").asString
             } catch (e: Exception) {
                 // If not ready yet, ignore and retry.
             }
