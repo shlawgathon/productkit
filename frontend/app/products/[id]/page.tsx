@@ -16,6 +16,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [isLoading, setIsLoading] = useState(true);
   const [activeImage, setActiveImage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -42,6 +43,33 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const toggleImageSelection = (imageUrl: string) => {
+    setSelectedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageUrl)) {
+        newSet.delete(imageUrl);
+      } else {
+        newSet.add(imageUrl);
+      }
+      return newSet;
+    });
+  };
+
+  const downloadSelected = async () => {
+    const urls = Array.from(selectedImages);
+    for (const url of urls) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = url.split('/').pop() || 'download';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      // Small delay between downloads
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   };
 
   const handleProcessingComplete = () => {
@@ -122,10 +150,25 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   className="object-cover"
                 />
                 {index < (product.generatedAssets?.heroImages?.length || 0) && (
-                  <div className="absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded">
+                  <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded">
                     AI
                   </div>
                 )}
+                {/* Selection Checkbox */}
+                <div className="absolute top-2 left-2" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="icon"
+                    variant={selectedImages.has(image) ? "default" : "secondary"}
+                    className="h-6 w-6 rounded-md"
+                    onClick={() => toggleImageSelection(image)}
+                  >
+                    {selectedImages.has(image) ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <div className="h-3 w-3 border-2 border-current rounded-sm" />
+                    )}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -216,34 +259,20 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           </div>
 
           <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-            <h3 className="font-semibold mb-4">Generated Assets</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Generated Assets</h3>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8 gap-2 px-3"
+                onClick={downloadSelected}
+                disabled={selectedImages.size === 0}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download {selectedImages.size > 0 && `(${selectedImages.size})`}
+              </Button>
+            </div>
             <div className="space-y-3">
-              {/* Hero Images */}
-              {product.generatedAssets?.heroImages && product.generatedAssets.heroImages.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Hero Images ({product.generatedAssets.heroImages.length})</p>
-                  {product.generatedAssets.heroImages.map((imageUrl: string, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
-                          IMG
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">Hero Image {idx + 1}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">{imageUrl}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" asChild>
-                          <a href={imageUrl} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* AR Model */}
               {product.generatedAssets?.arModelUrl && (
