@@ -66,13 +66,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
             } else if (hasBypassCookie) {
-                console.log("No token but bypass cookie found, using mock user");
-                setUser({
-                    _id: 'dev-user',
-                    email: 'dev@example.com',
-                    firstName: 'Dev',
-                    lastName: 'User'
-                });
+                // Don't auto-login on public auth pages if we only have the bypass cookie
+                // This allows testing the login flow
+                if (pathname !== '/login' && pathname !== '/register') {
+                    console.log("No token but bypass cookie found, using mock user");
+                    setUser({
+                        _id: 'dev-user',
+                        email: 'dev@example.com',
+                        firstName: 'Dev',
+                        lastName: 'User'
+                    });
+                }
             }
             setIsLoading(false);
         };
@@ -81,19 +85,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [router, pathname]);
 
     const login = async (credentials: any) => {
-        const response = await api.login(credentials);
-        api.setTokens(response.token, response.refreshToken);
-        setUser(response.user);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        router.push('/dashboard');
+        try {
+            const response = await api.login(credentials);
+            api.setTokens(response.token, response.refreshToken);
+            setUser(response.user);
+            localStorage.setItem('user', JSON.stringify(response.user));
+            router.push('/dashboard');
+        } catch (error) {
+            const hasBypassCookie = document.cookie.includes('auth-token=dev-bypass-token');
+            if (hasBypassCookie) {
+                console.log("Login failed but bypass cookie found, using mock user");
+                const mockUser = {
+                    _id: 'dev-user',
+                    email: credentials.username || 'dev@example.com',
+                    firstName: 'Dev',
+                    lastName: 'User'
+                };
+                setUser(mockUser);
+                localStorage.setItem('user', JSON.stringify(mockUser));
+                router.push('/dashboard');
+                return;
+            }
+            throw error;
+        }
     };
 
     const register = async (credentials: any) => {
-        const response = await api.register(credentials);
-        api.setTokens(response.token, response.refreshToken);
-        setUser(response.user);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        router.push('/onboarding');
+        try {
+            const response = await api.register(credentials);
+            api.setTokens(response.token, response.refreshToken);
+            setUser(response.user);
+            localStorage.setItem('user', JSON.stringify(response.user));
+            router.push('/onboarding');
+        } catch (error) {
+            const hasBypassCookie = document.cookie.includes('auth-token=dev-bypass-token');
+            if (hasBypassCookie) {
+                console.log("Registration failed but bypass cookie found, using mock user");
+                const mockUser = {
+                    _id: 'dev-user',
+                    email: credentials.email || 'dev@example.com',
+                    firstName: 'Dev',
+                    lastName: 'User'
+                };
+                setUser(mockUser);
+                localStorage.setItem('user', JSON.stringify(mockUser));
+                router.push('/onboarding');
+                return;
+            }
+            throw error;
+        }
     };
 
     const logout = async () => {

@@ -60,10 +60,21 @@ export default function SettingsPage() {
     fetchSettings();
   }, []);
 
-  const handleSave = async () => {
+  const saveBrand = async () => {
     setIsLoading(true);
     try {
       await api.updateBrand(brand);
+      // Optional: Show success toast
+    } catch (error) {
+      console.error("Failed to save brand settings", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    setIsLoading(true);
+    try {
       await api.updateProfile({
         firstName: profile.firstName,
         lastName: profile.lastName,
@@ -73,7 +84,7 @@ export default function SettingsPage() {
       });
       // Optional: Show success toast
     } catch (error) {
-      console.error("Failed to save settings", error);
+      console.error("Failed to save profile settings", error);
     } finally {
       setIsLoading(false);
     }
@@ -133,6 +144,12 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+          <div className="p-6 border-t bg-muted/20 flex justify-end">
+            <Button className="gap-2" onClick={saveProfile} disabled={isLoading}>
+              <Save className="h-4 w-4" />
+              {isLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
 
         {/* Shopify Integration Section */}
@@ -181,6 +198,12 @@ export default function SettingsPage() {
                 Without these credentials, you'll see mock review data.
               </p>
             </div>
+          </div>
+          <div className="p-6 border-t bg-muted/20 flex justify-end">
+            <Button className="gap-2" onClick={saveProfile} disabled={isLoading}>
+              <Save className="h-4 w-4" />
+              {isLoading ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </div>
 
@@ -255,7 +278,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="p-6 border-t bg-muted/20 flex justify-end">
-            <Button className="gap-2" onClick={handleSave} disabled={isLoading}>
+            <Button className="gap-2" onClick={saveBrand} disabled={isLoading}>
               <Save className="h-4 w-4" />
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>
