@@ -221,12 +221,22 @@ class AnthropicService(
     suspend fun generateMarketingCopy(
         productName: String,
         productDescription: String?,
-        pdfGuidesCount: Int = 0
+        pdfGuidesCount: Int = 0,
+        pdfContent: String? = null
     ): String
     {
         val pdfGuidesInfo = if (pdfGuidesCount > 0)
         {
-            "\nAdditional Context: This product has $pdfGuidesCount PDF guide(s) available, suggesting it may have technical specifications or detailed documentation."
+            "\nAdditional Context: This product has $pdfGuidesCount PDF guide(s) available."
+        } else ""
+
+        val pdfContext = if (!pdfContent.isNullOrBlank()) {
+            """
+            
+            EXTRACTED PDF CONTENT (Use this technical information to enrich the copy, especially features and benefits):
+            $pdfContent
+            
+            """.trimIndent()
         } else ""
 
         val prompt = """
@@ -235,6 +245,7 @@ class AnthropicService(
             
             Product Name: $productName
             Product Description: ${productDescription ?: "No description provided"}$pdfGuidesInfo
+            $pdfContext
             
             Your task is to generate a JSON object with the following fields:
             
@@ -253,13 +264,12 @@ class AnthropicService(
             - Maintenance instructions should be care/preservation tips
             - Make all content specific to this product, not generic
             - Use professional, persuasive language
-            
-            Return ONLY a valid JSON object with these exact keys, no extra text or markdown formatting.
+            - Return ONLY a valid JSON object with these exact keys, no extra text or markdown formatting.
         """.trimIndent()
 
         return generateText(
             prompt = prompt,
-            maxTokens = 1024,
+            maxTokens = 2048, // Increased for potentially larger context
             temperature = 0.7
         )
     }

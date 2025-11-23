@@ -56,6 +56,7 @@ object JobManager {
     private val anthropic = AnthropicService()
     private val storage = com.productkit.services.StorageService()
     private val shopify = com.productkit.services.ShopifyService()
+    private val nvidia = com.productkit.services.NvidiaService()
 
     fun getStatus(jobId: String): GenerationJobStatus? = jobs[jobId]
 
@@ -178,10 +179,30 @@ object JobManager {
                     var productCopy: com.productkit.models.ProductCopy? = null
                     try {
                         println("[JOB_PROCESSING] Sending prompt to Anthropic for marketing copy generation")
+                        
+                        // Parse PDF guides if available
+                        val pdfContent = StringBuilder()
+                        if (product.pdfGuides.isNotEmpty()) {
+                            println("[JOB_PROCESSING] Parsing ${product.pdfGuides.size} PDF guides using NVIDIA NIM...")
+                            product.pdfGuides.forEachIndexed { index, url ->
+                                try {
+                                    val text = nvidia.parsePdf(url)
+                                    if (text.isNotBlank()) {
+                                        pdfContent.append("\n--- PDF GUIDE ${index + 1} ---\n")
+                                        pdfContent.append(text)
+                                        pdfContent.append("\n")
+                                    }
+                                } catch (e: Exception) {
+                                    println("[JOB_PROCESSING] Failed to parse PDF guide $url: ${e.message}")
+                                }
+                            }
+                        }
+
                         val response = anthropic.generateMarketingCopy(
                             productName = product.name,
                             productDescription = product.description,
-                            pdfGuidesCount = product.pdfGuides.size
+                            pdfGuidesCount = product.pdfGuides.size,
+                            pdfContent = pdfContent.toString()
                         )
 
                         var jsonString = response
