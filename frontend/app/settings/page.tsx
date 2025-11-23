@@ -8,6 +8,7 @@ import { User, Save, Palette, Store } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -145,7 +146,7 @@ export default function SettingsPage() {
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
           <div className="p-6 border-b">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Store className="h-5 w-5" />
+              <ShopifyIcon className="h-5 w-5" />
               Shopify Integration
             </h2>
             <p className="text-sm text-muted-foreground mt-1">

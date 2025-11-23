@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import GlbViewer from "@/components/dashboard/GlbViewer";
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import {
@@ -102,7 +103,7 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite }: P
             {product.shopifyStorefrontUrl && (
               <Link href={product.shopifyStorefrontUrl} target="_blank" rel="noopener noreferrer">
                 <Button size="icon" variant="secondary" className="h-9 w-9 rounded-full bg-green-100 hover:bg-green-200 text-green-700">
-                  <ShoppingBag className="h-4 w-4" />
+                  <ShopifyIcon className="h-4 w-4" />
                 </Button>
               </Link>
             )}
@@ -166,12 +167,12 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite }: P
             {product.shopifyStorefrontUrl ? (
               <Link href={product.shopifyStorefrontUrl} target="_blank" rel="noopener noreferrer">
                 <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-green-600 hover:text-green-700">
-                  <Wifi className="h-4 w-4" />
+                  <ShopifyIcon className="h-4 w-4" />
                 </Button>
               </Link>
             ) : (
               <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-muted-foreground/30 cursor-not-allowed" disabled>
-                <Wifi className="h-4 w-4" />
+                <ShopifyIcon className="h-4 w-4" />
               </Button>
             )}
           </div>

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
 import GlbViewer from "@/components/dashboard/GlbViewer";
 import { ProductProcessingProgress } from "@/components/dashboard/ProductProcessingProgress";
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -112,7 +113,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           {product.shopifyStorefrontUrl && (
             <Button variant="outline" size="sm" className="gap-2 text-green-700 border-green-200 bg-green-50 hover:bg-green-100" asChild>
               <a href={product.shopifyStorefrontUrl} target="_blank" rel="noopener noreferrer">
-                <ShoppingBag className="h-4 w-4" />
+                <ShopifyIcon className="h-4 w-4" />
                 View on Shopify
               </a>
             </Button>
