@@ -18,15 +18,13 @@ export function UploadZone({ onFilesSelected, className, initialFiles = [] }: Up
   const [previews, setPreviews] = useState<string[]>([]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles(currentFiles => {
-      const newFiles = [...currentFiles, ...acceptedFiles];
-      onFilesSelected(newFiles);
-      return newFiles;
-    });
+    const newFiles = [...files, ...acceptedFiles];
+    setFiles(newFiles);
+    onFilesSelected(newFiles);
 
     const newPreviews = acceptedFiles.map(file => URL.createObjectURL(file));
     setPreviews(prev => [...prev, ...newPreviews]);
-  }, [onFilesSelected]);
+  }, [files, onFilesSelected]);
 
   const { getRootProps, getInputProps, isDragActive, inputRef } = useDropzone({
     onDrop,
@@ -39,11 +37,9 @@ export function UploadZone({ onFilesSelected, className, initialFiles = [] }: Up
   const removePreview = (index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    setFiles(currentFiles => {
-      const newFiles = currentFiles.filter((_, i) => i !== index);
-      onFilesSelected(newFiles);
-      return newFiles;
-    });
+    const newFiles = files.filter((_, i) => i !== index);
+    setFiles(newFiles);
+    onFilesSelected(newFiles);
     
     setPreviews(currentPreviews => currentPreviews.filter((_, i) => i !== index));
     

@@ -7,12 +7,60 @@ import { api } from "@/lib/api-client";
 import { useRef, useState, useEffect } from "react";
 import { NotificationBell } from "@/components/notification-bell";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
+import { ProductProcessingProgress } from "@/components/dashboard/ProductProcessingProgress";
+
+interface Product {
+  id: string;
+  status: string;
+  queuePosition?: number;
+  queueTotal?: number;
+}
 
 export function Header() {
   const { user, logout, updateUser } = useAuth();
   // const isShopifyConnected = !!(user?.shopifyStoreUrl && user?.shopifyAccessToken);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const checkActiveProducts = async () => {
+      if (!user) return;
+      try {
+        const data = await api.getProducts();
+        const products = data.products || [];
+        const processingProducts = products.filter((p: any) => 
+          p.status === "GENERATING" || 
+          p.status === "GENERATING_IMAGES" ||
+          p.status === "GENERATING_COPY" ||
+          p.status === "GENERATING_SITE" ||
+          p.status === "SYNCING_SHOPIFY" ||
+          p.status === "POST_COMPLETION_ASSETS" || 
+          p.status === "PROCESSING"
+        );
+        
+        if (processingProducts.length > 0) {
+          // We'll just show the first one as active for now, but show the total count
+          const active = processingProducts[0];
+          setActiveProduct({
+            id: active._id,
+            status: active.status,
+            queuePosition: 1, // Currently showing 1st of N
+            queueTotal: processingProducts.length
+          });
+        } else {
+          setActiveProduct(null);
+        }
+      } catch (error) {
+        console.error("Failed to check active products", error);
+      }
+    };
+
+    // Check immediately and then every 10 seconds
+    checkActiveProducts();
+    const interval = setInterval(checkActiveProducts, 10000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     // Check system preference or local storage
@@ -80,6 +128,19 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+
+          {activeProduct && (
+            <ProductProcessingProgress
+              productId={activeProduct.id}
+              currentStatus={activeProduct.status}
+              queuePosition={activeProduct.queuePosition}
+              queueTotal={activeProduct.queueTotal}
+              onComplete={() => {
+                setActiveProduct(null);
+                window.location.reload();
+              }}
+            />
+          )}
 
           <Button
             variant="ghost"

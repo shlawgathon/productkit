@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useProductStatus, JobStep } from "@/hooks/useProductStatus";
-import { CheckCircle2, Clock, AlertCircle, Flame, Zap, Box, FileText, ShoppingBag, Video, Image as ImageIcon } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, Flame, Zap, Box, FileText, ShoppingBag, Video, Image as ImageIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductProcessingProgressProps {
     productId: string;
     currentStatus: string;
     onComplete?: () => void;
+    queuePosition?: number;
+    queueTotal?: number;
 }
 
 const getStepStyle = (name: string) => {
@@ -49,7 +51,7 @@ function TraceBlock({ step, minStartTime, totalDuration }: { step: JobStep; minS
         <div className="relative h-10 w-full">
             {/* Start Time Label - Aligned to the left edge of the block */}
             <div
-                className="absolute top-0 text-[9px] font-mono text-gray-500 leading-none"
+                className="absolute top-0 text-[9px] font-mono text-muted-foreground leading-none"
                 style={{ left: `${leftPercent}%` }}
             >
                 {(startOffset / 1000).toFixed(3)}s
@@ -57,7 +59,7 @@ function TraceBlock({ step, minStartTime, totalDuration }: { step: JobStep; minS
 
             {/* The Block */}
             <div
-                className="absolute top-3 h-6 rounded-[2px] bg-[#2d2d2d] border-l-[3px] flex items-center justify-center overflow-hidden transition-all duration-100 ease-linear shadow-sm group"
+                className="absolute top-3 h-6 rounded-[2px] bg-muted border-l-[3px] flex items-center justify-center overflow-hidden transition-all duration-100 ease-linear shadow-sm group"
                 style={{
                     left: `${leftPercent}%`,
                     width: `${widthPercent}%`,
@@ -65,19 +67,19 @@ function TraceBlock({ step, minStartTime, totalDuration }: { step: JobStep; minS
                     minWidth: "24px"
                 }}
             >
-                <span className="text-[9px] font-mono font-medium text-gray-300 px-1 truncate">
+                <span className="text-[9px] font-mono font-medium text-muted-foreground px-1 truncate">
                     {durationSeconds}s
                 </span>
 
                 {/* Active Pulse */}
                 {step.status === "RUNNING" && (
-                    <div className="absolute inset-0 bg-white/5 animate-pulse" />
+                    <div className="absolute inset-0 bg-foreground/5 animate-pulse" />
                 )}
             </div>
 
             {/* Step Label - Below the block */}
             <div
-                className="absolute top-[38px] text-[9px] font-medium text-gray-400 leading-none"
+                className="absolute top-[38px] text-[9px] font-medium text-muted-foreground leading-none"
                 style={{ left: `${leftPercent}%` }}
             >
                 <span style={{ color: step.status === "RUNNING" ? style.color : undefined }}>
@@ -112,9 +114,9 @@ function TraceView({ steps }: { steps: JobStep[] }) {
     const totalDuration = Math.max(1000, maxEndTime - minStartTime);
 
     return (
-        <div className="bg-[#09090b] rounded-lg p-3 border border-[#27272a] font-sans select-none">
+        <div className="bg-muted rounded-lg p-3 border border-border font-sans select-none">
             {/* Ruler */}
-            <div className="flex justify-between text-[9px] font-mono text-[#52525b] mb-4 border-b border-[#27272a] pb-1">
+            <div className="flex justify-between text-[9px] font-mono text-muted-foreground mb-4 border-b border-border pb-1">
                 <span>0.000s</span>
                 <span>{(totalDuration / 1000).toFixed(3)}s</span>
             </div>
@@ -123,11 +125,11 @@ function TraceView({ steps }: { steps: JobStep[] }) {
             <div className="relative space-y-3 pb-2">
                 {/* Grid Lines */}
                 <div className="absolute inset-0 flex justify-between pointer-events-none opacity-5 h-full">
-                    <div className="w-px h-full bg-white" />
-                    <div className="w-px h-full bg-white" />
-                    <div className="w-px h-full bg-white" />
-                    <div className="w-px h-full bg-white" />
-                    <div className="w-px h-full bg-white" />
+                    <div className="w-px h-full bg-foreground" />
+                    <div className="w-px h-full bg-foreground" />
+                    <div className="w-px h-full bg-foreground" />
+                    <div className="w-px h-full bg-foreground" />
+                    <div className="w-px h-full bg-foreground" />
                 </div>
 
                 {steps.filter(s => s.status !== "PENDING").map((step) => (
@@ -140,7 +142,7 @@ function TraceView({ steps }: { steps: JobStep[] }) {
                 ))}
 
                 {steps.every(s => s.status === "PENDING") && (
-                    <div className="text-center py-4 text-[10px] text-[#52525b] animate-pulse">
+                    <div className="text-center py-4 text-[10px] text-muted-foreground animate-pulse">
                         Initializing trace...
                     </div>
                 )}
@@ -153,8 +155,10 @@ export function ProductProcessingProgress({
     productId,
     currentStatus,
     onComplete,
+    queuePosition,
+    queueTotal,
 }: ProductProcessingProgressProps) {
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
     const { status, isConnected } = useProductStatus(
         productId,
         currentStatus === "PROCESSING" ||
@@ -182,40 +186,49 @@ export function ProductProcessingProgress({
     const steps = status?.steps ?? [];
 
     return (
-        <div className="fixed top-20 right-6 z-50 w-full max-w-[450px] transition-all duration-300 ease-in-out">
+        <div className="relative z-50">
             <div className={cn(
-                "bg-[#09090b] rounded-xl shadow-2xl border border-[#27272a] overflow-hidden transition-all duration-300",
-                isCollapsed ? "w-auto inline-block float-right" : "w-full"
-            )}>
-                {/* Minimal Header */}
-                <div
-                    className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-[#27272a]/50 transition-colors"
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                >
-                    <div className="flex items-center gap-2">
-                        {progress === 100 ? (
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
-                        ) : status?.status === "ERROR" ? (
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
-                        ) : (
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
-                        )}
-                        <span className="text-[10px] font-mono text-gray-400 tracking-tight">
-                            Asset Generation Status
-                        </span>
-                    </div>
-                    <div className="text-[10px] font-mono text-gray-500">
-                        {progress}%
-                    </div>
-                </div>
-
-                {/* Content */}
-                {!isCollapsed && (
-                    <div className="p-3 pt-0">
-                        <TraceView steps={steps} />
-                    </div>
+                "bg-muted rounded-full shadow-sm border border-border overflow-hidden transition-all duration-300 cursor-pointer hover:bg-accent",
+                "flex items-center gap-3 px-3 py-1.5"
+            )}
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            >
+                {progress === 100 ? (
+                    <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
+                ) : status?.status === "ERROR" ? (
+                    <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
+                ) : (
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
                 )}
+                
+                <span className="text-xs font-medium text-foreground tracking-tight whitespace-nowrap hidden sm:inline-block">
+                    Generating Assets
+                </span>
+
+                {queuePosition && queueTotal && (
+                    <span className="text-xs font-mono text-muted-foreground">
+                        {queuePosition}/{queueTotal}
+                    </span>
+                )}
+
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-muted-foreground">
+                        {progress}%
+                    </span>
+                    {isCollapsed ? (
+                        <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    ) : (
+                        <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                    )}
+                </div>
             </div>
+
+            {/* Dropdown Content */}
+            {!isCollapsed && (
+                <div className="absolute top-full right-0 mt-2 w-[400px] bg-background dark:bg-card rounded-xl shadow-xl border border-border p-3 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
+                    <TraceView steps={steps} />
+                </div>
+            )}
         </div>
     );
 }
