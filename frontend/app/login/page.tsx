@@ -45,7 +45,7 @@ function LoginForm() {
           <div className="relative h-16 w-16 overflow-hidden mb-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/icon.png"
+              src="/logo.png"
               alt="ProductKit Logo"
               className="object-contain h-full w-full"
             />

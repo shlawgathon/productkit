@@ -81,11 +81,17 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8 pb-20">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your account settings and brand preferences.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your account settings and brand preferences.
+          </p>
+        </div>
+        <Button className="gap-2" onClick={handleSave} disabled={isLoading}>
+          <Save className="h-4 w-4" />
+          {isLoading ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
 
       <div className="grid gap-8">
@@ -252,13 +258,6 @@ export default function SettingsPage() {
                 onChange={(e) => setBrand({ ...brand, tone: e.target.value })}
               />
             </div>
-          </div>
-
-          <div className="p-6 border-t bg-muted/20 flex justify-end">
-            <Button className="gap-2" onClick={handleSave} disabled={isLoading}>
-              <Save className="h-4 w-4" />
-              {isLoading ? "Saving..." : "Save Changes"}
-            </Button>
           </div>
         </div>
       </div>
