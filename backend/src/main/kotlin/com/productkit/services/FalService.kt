@@ -19,40 +19,6 @@ class FalService(
         // Seedream v4 edit model endpoint
         private const val IMAGE_EDIT_MODEL = "fal-ai/beta-image-232/edit"
         private const val IMAGE_UNDERSTAND_MODEL = "fal-ai/bagel/understand"
-        private const val TEXT_LLM = "fal-ai/llama-3-70b-instruct"
-    }
-
-    // Helper to understand image content using bagel/understand model
-    private suspend fun understandImage(imageUrl: String): String {
-        val input = mapOf(
-            "image_url" to imageUrl,
-            "prompt" to "What is shown in the image?"
-        )
-        val result = fal.run(
-            endpointId = IMAGE_UNDERSTAND_MODEL,
-            input = input,
-            options = RunOptions()
-        )
-        val jsonStr = result.data.toString()
-        val regex = Regex("\"text\":\"([^\"]+)\"")
-        val match = regex.find(jsonStr)
-        return match?.groupValues?.get(1) ?: ""
-    }
-
-    // Helper to generate marketing prompts from description using Llama 3 model
-    private suspend fun generatePromptsFromDescription(description: String): List<String> {
-        if (description.isBlank()) return emptyList()
-        val prompt = "Based on the following description, generate five concise marketing copy prompts for product images. Return each prompt on a separate line.\nDescription: $description"
-        val result = fal.run(
-            endpointId = TEXT_LLM,
-            input = mapOf("prompt" to prompt),
-            options = RunOptions()
-        )
-        val text = result.data.toString()
-        val regex = Regex("\"text\":\"(\"+)\"")
-        val match = regex.find(text)
-        val generated = match?.groupValues?.get(1) ?: ""
-        return generated.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     /**
