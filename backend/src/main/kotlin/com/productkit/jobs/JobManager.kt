@@ -82,7 +82,7 @@ object JobManager {
 
     fun enqueueAssetsGeneration(productId: String, req: GenerationRequest): String {
         val jobId = UUID.randomUUID().toString()
-        
+
         // Define initial steps
         val steps = mutableListOf(
             JobStep("init", "Initializing", "PENDING"),
@@ -306,14 +306,14 @@ object JobManager {
                          if (shopifyResult != null) {
                              shopifyId = shopifyResult.id
                              shopifyUrl = shopifyResult.url
-                             
+
                              // Update product with media (images)
                              println("[SHOPIFY] Adding media to product ${shopifyResult.id}...")
                              val productWithId = product.copy(shopifyProductId = shopifyResult.id)
                              val mediaUpdated = shopify.updateProductMedia(
-                                 productWithId, 
-                                 generatedAssets, 
-                                 user.shopifyStoreUrl, 
+                                 productWithId,
+                                 generatedAssets,
+                                 user.shopifyStoreUrl,
                                  user.shopifyAccessToken
                              )
                              if (mediaUpdated) {
@@ -350,7 +350,7 @@ object JobManager {
                 scope.launch {
                     try {
                         println("[JOB_PROCESSING] Starting post-completion assets for product $productId")
-                        
+
                         // Update status to POST_COMPLETION_ASSETS
                         var postProduct = productRepo.findById(productId)
                         if (postProduct != null) {
@@ -368,6 +368,7 @@ object JobManager {
                                 try {
                                     val videoUrl = fal.generateProductVideo("Cinematic product showcase", baseImage)
                                     println("[JOB_PROCESSING] Video generated at: $videoUrl")
+                                    updateStep(status, "video", "COMPLETED")
                                     videoUrl
                                 } catch (e: Exception) {
                                     println("[JOB_PROCESSING] Failed to generate video: ${e.message}")
@@ -396,7 +397,7 @@ object JobManager {
                                 usageInstructions = emptyList(),
                                 maintenanceInstructions = emptyList()
                             )
-                            
+
                             if (baseImage != null) {
                                 try {
                                     val infographicUrl = fal.generateProductInfographic(
@@ -406,6 +407,7 @@ object JobManager {
                                         productCopy = currentProductCopy
                                     )
                                     println("[JOB_PROCESSING] Infographic generated at: $infographicUrl")
+                                    updateStep(status, "infographic", "COMPLETED")
                                     infographicUrl
                                 } catch (e: Exception) {
                                     println("[JOB_PROCESSING] Failed to generate infographic: ${e.message}")
@@ -423,10 +425,7 @@ object JobManager {
                         val assets3d = modelDeferred.await()
                         val videoUrl = videoDeferred.await()
                         val infographicUrl = infographicDeferred.await()
-                        
-                        if (videoUrl != null) updateStep(status, "video", "COMPLETED")
-                        if (infographicUrl != null) updateStep(status, "infographic", "COMPLETED")
-                        
+
                         if (assets3d != null || videoUrl != null || infographicUrl != null) {
                             // Update product with new assets
                             postProduct = productRepo.findById(productId)

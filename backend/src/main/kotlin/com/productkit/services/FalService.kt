@@ -212,6 +212,7 @@ class FalService(
 
         // Poll for result synchronously (simple implementation).
         var attempts = 0
+        var errors = 0
         while (attempts < 300) { // wait up to ~100 seconds
             runCatching {
                 val status = fal.queue.status(
@@ -235,6 +236,10 @@ class FalService(
                 return result.data.get("full_model_mesh").asJsonObject.get("url").asString
             }.onFailure {
                 it.printStackTrace()
+                if (errors++ >= 5)
+                {
+                    throw IllegalStateException("more than 5 failures related to GLB gen", it)
+                }
             }
         }
         throw IllegalStateException("Failed to retrieve GLB model from Fal AI after waiting")
@@ -272,7 +277,7 @@ class FalService(
     /**
      * Generate a highly detailed product infographic or manual using the alpha image -> image model.
      * Creates an English readable infographic with product details, features, and specifications.
-     * 
+     *
      * @param productName Name of the product
      * @param productDescription Description of the product
      * @param baseImage URL of the base product image
@@ -286,11 +291,11 @@ class FalService(
         productCopy: com.productkit.models.ProductCopy
     ): String {
         println("[FalService] Generating product infographic for: $productName")
-        
+
         // Construct a detailed prompt for the infographic
         val featuresText = productCopy.features.joinToString(", ")
         val benefitsText = productCopy.benefits.joinToString(", ")
-        
+
         val prompt = """
             Create a highly detailed, professional product infographic or manual with clear ENGLISH TEXT that is READABLE. 
             The infographic must include readable English text labels, headings, and descriptions.
@@ -347,10 +352,10 @@ class FalService(
             val imageData = Json.decodeFromString<ImageData>(result.data.toString())
             val infographicUrl = imageData.images.firstOrNull()?.url
                 ?: throw IllegalStateException("No infographic image generated")
-            
+
             println("[FalService] Successfully generated infographic: $infographicUrl")
             return infographicUrl
-            
+
         } catch (e: Exception) {
             println("[FalService] Failed to generate infographic: ${e.message}")
             e.printStackTrace()
