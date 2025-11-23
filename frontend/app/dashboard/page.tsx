@@ -4,14 +4,19 @@ import { ProductCard, type Product } from "@/components/dashboard/product-card";
 import { ProductProcessingProgress } from "@/components/dashboard/ProductProcessingProgress";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { FAB } from "@/components/dashboard/fab";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -26,6 +31,7 @@ export default function DashboardPage() {
           status: mapStatus(p.status),
           thumbnailUrl: p.originalImages?.[0] || "",
           lastModified: new Date(p.updatedAt).toLocaleDateString(),
+          updatedAt: p.updatedAt, // Keep the original date for sorting
           generatedAssets: p.generatedAssets ? {
             arModelUrl: p.generatedAssets.arModelUrl,
           } : undefined,
@@ -42,6 +48,31 @@ export default function DashboardPage() {
     fetchProducts();
   }, [user]);
 
+  // Load favorites from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('favoriteProducts');
+    if (stored) {
+      setFavorites(new Set(JSON.parse(stored)));
+    }
+  }, []);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    localStorage.setItem('favoriteProducts', JSON.stringify(Array.from(favorites)));
+  }, [favorites]);
+
+  const toggleFavorite = (productId: string) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(productId)) {
+        newFavorites.delete(productId);
+      } else {
+        newFavorites.add(productId);
+      }
+      return newFavorites;
+    });
+  };
+
   const mapStatus = (backendStatus: string): "active" | "draft" | "generating" => {
     switch (backendStatus) {
       case "COMPLETED":
@@ -52,6 +83,37 @@ export default function DashboardPage() {
       default:
         return "generating";
     }
+  };
+
+  // Filter and sort products
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = products;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = products.filter(p =>
+        p.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort by date
+    const sorted = [...filtered].sort((a, b) => {
+      const dateA = new Date(a.updatedAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || 0).getTime();
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    });
+
+    // Sort favorites to top
+    return sorted.sort((a, b) => {
+      const aFav = favorites.has(a.id) ? 1 : 0;
+      const bFav = favorites.has(b.id) ? 1 : 0;
+      return bFav - aFav;
+    });
+  }, [products, searchQuery, sortOrder, favorites]);
+
+  const toggleSort = () => {
+    setSortOrder(prev => prev === "asc" ? "desc" : "asc");
   };
 
   if (isLoading) {
@@ -80,10 +142,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {products.length > 0 ? (
+      <div className="flex items-center">
+        <input
+          type="search"
+          placeholder="Search products..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-10 w-full max-w-sm rounded-lg border border-input bg-transparent px-4 text-sm outline-none focus:border-primary transition-colors"
+        />
+      </div>
+
+      {filteredAndSortedProducts.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {filteredAndSortedProducts.map((product) => (
+            <ProductCard 
+              key={product.id} 
+              product={product}
+              isFavorite={favorites.has(product.id)}
+              onToggleFavorite={() => toggleFavorite(product.id)}
+            />
           ))}
         </div>
       ) : (

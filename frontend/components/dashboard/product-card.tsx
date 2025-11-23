@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MoreHorizontal, Edit, ExternalLink, Trash2, ShoppingBag, Wifi } from "lucide-react";
+import { MoreHorizontal, Edit, ExternalLink, Trash2, ShoppingBag, Wifi, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ export interface Product {
   status: "active" | "draft" | "generating" | "error";
   thumbnailUrl: string;
   lastModified: string;
+  updatedAt?: string; // For sorting
   generatedAssets?: {
     arModelUrl?: string;
     // other asset fields can be added as needed
@@ -37,12 +38,13 @@ export interface Product {
 
 interface ProductCardProps {
   product: Product;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 
 
-export function ProductCard({ product }: ProductCardProps) {
-  const router = useRouter();
+export function ProductCard({ product, isFavorite = false, onToggleFavorite }: ProductCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -127,6 +129,22 @@ export function ProductCard({ product }: ProductCardProps) {
             >
               {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
             </Badge>
+          </div>
+          
+          {/* Favorite Star */}
+          <div className="absolute top-3 right-3">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleFavorite?.();
+              }}
+              className="h-8 w-8 rounded-full bg-transparent hover:bg-white/20 text-white"
+            >
+              <Star className={cn("h-5 w-5", isFavorite && "fill-current")} />
+            </Button>
           </div>
         </div>
 
