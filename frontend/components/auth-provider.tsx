@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const initAuth = async () => {
             const token = localStorage.getItem('accessToken');
+            const hasBypassCookie = document.cookie.includes('auth-token=dev-bypass-token');
+
             if (token) {
                 try {
                     // Validate token and get user info
@@ -41,21 +43,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const userData = await api.getUser();
                     setUser(userData);
                     localStorage.setItem('user', JSON.stringify(userData));
-                } catch (error: any) {
-                    // If server is down, use mock user to allow UI development
-                    if (error.message?.includes('Unable to connect to server')) {
-                        console.warn('Server is down, using mock user');
+                } catch (error) {
+                    console.error("Auth check failed", error);
+                    
+                    if (hasBypassCookie) {
+                        console.log("Auth failed but bypass cookie found, using mock user");
                         setUser({
-                            _id: 'mock-user',
-                            email: 'mock@example.com',
-                            firstName: 'Mock',
+                            _id: 'dev-user',
+                            email: 'dev@example.com',
+                            firstName: 'Dev',
                             lastName: 'User'
                         });
                         setIsLoading(false);
                         return;
                     }
 
-                    console.error("Auth check failed", error);
                     api.clearTokens();
                     setUser(null);
                     localStorage.removeItem('user');
@@ -63,6 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         router.push('/login');
                     }
                 }
+            } else if (hasBypassCookie) {
+                console.log("No token but bypass cookie found, using mock user");
+                setUser({
+                    _id: 'dev-user',
+                    email: 'dev@example.com',
+                    firstName: 'Dev',
+                    lastName: 'User'
+                });
             }
             setIsLoading(false);
         };

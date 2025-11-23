@@ -21,6 +21,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       console.log("[AuthGuard] All cookies:", cookies);
 
       if (!localToken) {
+        // Check for bypass cookie
+        const hasBypassCookie = document.cookie.includes('auth-token=dev-bypass-token');
+        
+        if (hasBypassCookie) {
+          console.log("[AuthGuard] Bypass token found in cookies, allowing access");
+          setIsAuthenticated(true);
+          return;
+        }
+
         console.log("[AuthGuard] No token found, redirecting to login");
         // Get redirect from URL or default to dashboard
         const urlParams = new URLSearchParams(window.location.search);
