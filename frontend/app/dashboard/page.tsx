@@ -212,8 +212,6 @@ export default function DashboardPage() {
       ) : (
         <EmptyState />
       )}
-
-      <FAB />
     </div>
   );
 }

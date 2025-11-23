@@ -312,17 +312,52 @@ object JobManager {
                             }
                         }
 
-                        // Await 3D model and video generation
+                        // Launch infographic generation in parallel
+                        val infographicDeferred = async {
+                            println("[JOB_PROCESSING] Generating product infographic for product $productId")
+                            // Use the first generated hero image as base, or original image if none
+                            val baseImage = heroImageUrls.firstOrNull() ?: product.originalImages.firstOrNull()
+                            val currentProductCopy = productCopy ?: com.productkit.models.ProductCopy(
+                                headline = "",
+                                subheadline = "",
+                                description = "",
+                                features = emptyList(),
+                                benefits = emptyList()
+                            )
+                            
+                            if (baseImage != null) {
+                                try {
+                                    val infographicUrl = fal.generateProductInfographic(
+                                        productName = product.name,
+                                        productDescription = product.description,
+                                        baseImage = baseImage,
+                                        productCopy = currentProductCopy
+                                    )
+                                    println("[JOB_PROCESSING] Infographic generated at: $infographicUrl")
+                                    infographicUrl
+                                } catch (e: Exception) {
+                                    println("[JOB_PROCESSING] Failed to generate infographic: ${e.message}")
+                                    e.printStackTrace()
+                                    null
+                                }
+                            } else {
+                                null
+                            }
+                        }
+
+                        // Await 3D model, video, and infographic generation
                         val assets3d = modelDeferred.await()
                         val videoUrl = videoDeferred.await()
+                        val infographicUrl = infographicDeferred.await()
                         
-                        if (assets3d != null || videoUrl != null) {
+                        if (assets3d != null || videoUrl != null || infographicUrl != null) {
                             // Update product with new assets
                             postProduct = productRepo.findById(productId)
                             if (postProduct != null) {
                                 val updatedAssets = postProduct.generatedAssets?.copy(
                                     arModelUrl = assets3d ?: postProduct.generatedAssets?.arModelUrl,
-                                    videoUrl = videoUrl ?: postProduct.generatedAssets?.videoUrl
+                                    videoUrl = videoUrl ?: postProduct.generatedAssets?.videoUrl,
+                                    infographicUrl = infographicUrl ?: postProduct.generatedAssets?.infographicUrl
                                 )
                                 val finalProduct = postProduct.copy(
                                     generatedAssets = updatedAssets,
@@ -330,7 +365,7 @@ object JobManager {
                                     updatedAt = System.currentTimeMillis()
                                 )
                                 productRepo.update(finalProduct)
-                                println("[JOB_PROCESSING] Updated product $productId with post-completion assets (3D: ${assets3d != null}, Video: ${videoUrl != null})")
+                                println("[JOB_PROCESSING] Updated product $productId with post-completion assets (3D: ${assets3d != null}, Video: ${videoUrl != null}, Infographic: ${infographicUrl != null})")
                                 status.generated3dAssets = assets3d
 
                                 // Upload new assets to Shopify

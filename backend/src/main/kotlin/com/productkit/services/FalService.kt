@@ -270,6 +270,95 @@ class FalService(
     }
 
     /**
+     * Generate a highly detailed product infographic or manual using the alpha image -> image model.
+     * Creates an English readable infographic with product details, features, and specifications.
+     * 
+     * @param productName Name of the product
+     * @param productDescription Description of the product
+     * @param baseImage URL of the base product image
+     * @param productCopy Marketing copy containing features and benefits
+     * @return URL of the generated infographic image
+     */
+    suspend fun generateProductInfographic(
+        productName: String,
+        productDescription: String?,
+        baseImage: String,
+        productCopy: com.productkit.models.ProductCopy
+    ): String {
+        println("[FalService] Generating product infographic for: $productName")
+        
+        // Construct a detailed prompt for the infographic
+        val featuresText = productCopy.features.joinToString(", ")
+        val benefitsText = productCopy.benefits.joinToString(", ")
+        
+        val prompt = """
+            Create a highly detailed, professional product infographic or manual with clear ENGLISH TEXT that is READABLE. 
+            The infographic must include readable English text labels, headings, and descriptions.
+            
+            Product: $productName
+            ${if (productDescription != null) "Description: $productDescription" else ""}
+            
+            The infographic should prominently feature:
+            - Product name as the main heading in large, bold, readable English text
+            - Key features section with readable bullet points: $featuresText
+            - Benefits section with readable text: $benefitsText
+            - Professional layout with clear typography
+            - Icons and visual elements to illustrate features
+            - Clean, modern design with good use of whitespace
+            - High contrast text for readability
+            - Product specifications in a structured format
+            
+            Style: Professional infographic design, similar to product manuals or technical specifications sheets.
+            All text must be in clear, legible English. Use a clean, modern sans-serif font.
+            Layout should be well-organized with distinct sections for features, benefits, and specifications.
+            Include visual diagrams or icons where appropriate.
+        """.trimIndent()
+
+        println("[FalService] Infographic prompt: ${prompt.take(200)}...")
+
+        try {
+            // Prepare input for the model
+            val input = mapOf(
+                "prompt" to prompt,
+                "image_urls" to listOf(baseImage),
+                "seed" to System.currentTimeMillis() // Use timestamp for unique results
+            )
+
+            // Using subscribe for real-time updates
+            val result = fal.subscribe(
+                endpointId = IMAGE_EDIT_MODEL,
+                input = input,
+                options = SubscribeOptions(logs = true)
+            ) { update ->
+                when (update) {
+                    is QueueStatus.InProgress -> {
+                        println("[FalService] Infographic generation progress: ${update.logs.lastOrNull()?.message ?: "Processing..."}")
+                    }
+                    is QueueStatus.Completed -> {
+                        println("[FalService] Infographic generation completed")
+                    }
+                    else -> {
+                        // Handle other status types if needed
+                    }
+                }
+            }
+
+            // Extract the first image URL from the result
+            val imageData = Json.decodeFromString<ImageData>(result.data.toString())
+            val infographicUrl = imageData.images.firstOrNull()?.url
+                ?: throw IllegalStateException("No infographic image generated")
+            
+            println("[FalService] Successfully generated infographic: $infographicUrl")
+            return infographicUrl
+            
+        } catch (e: Exception) {
+            println("[FalService] Failed to generate infographic: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    /**
      * Retrieve batch results using request IDs
      */
     suspend fun getBatchResults(

@@ -53,7 +53,8 @@ data class GeneratedAssets(
     val technicalSpecs: Map<String, String> = emptyMap(),
     val siteUrl: String? = null,
     val arModelUrl: String? = null,
-    val videoUrl: String? = null
+    val videoUrl: String? = null,
+    val infographicUrl: String? = null
 )
 
 data class ProductCopy(
