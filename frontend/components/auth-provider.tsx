@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     api.clearTokens();
                     setUser(null);
                     localStorage.removeItem('user');
-                    if (pathname !== '/login' && pathname !== '/register') {
+                    if (pathname !== '/login' && pathname !== '/signup') {
                         router.push('/login');
                     }
                 }

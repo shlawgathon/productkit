@@ -27,11 +27,6 @@ export default function Home() {
 
         <div className="flex items-center gap-4">
           <Link href="/login">
-            <Button variant="ghost" className="text-white hover:bg-white/10">
-              Sign in
-            </Button>
-          </Link>
-          <Link href="/signup">
             <Button className="bg-[#BAA5FF] text-[#1A1828] hover:bg-[#BAA5FF]/90 gap-2">
               Get Started
               <ArrowRight className="h-4 w-4" />
@@ -59,7 +54,7 @@ export default function Home() {
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
+          <div className="flex justify-center items-center pt-8">
             <Link href="/dashboard">
               <Button
                 size="lg"
@@ -67,15 +62,6 @@ export default function Home() {
               >
                 Go to Dashboard
                 <ArrowRight className="h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 text-lg px-8 py-6"
-              >
-                Learn More
               </Button>
             </Link>
           </div>
