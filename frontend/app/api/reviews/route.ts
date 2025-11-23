@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fal } from "@fal-ai/client";
+import Anthropic from '@anthropic-ai/sdk';
 
 // Mock data fallback for when Shopify is not available
 const MOCK_REVIEWS = [
@@ -114,29 +114,33 @@ export async function GET(request: Request) {
     )
     .join("\n\n");
 
-  // 3. Call Fal.ai LLM
+  // 3. Call Anthropic Claude API
   let aiAnalysis: any = null;
-  if (process.env.FAL_KEY) {
+  if (process.env.ANTHROPIC_API_KEY) {
     try {
-      const result = await fal.subscribe("fal-ai/llama-3-70b-instruct", {
-        input: {
-          prompt: `You are an expert product analyst. Analyze the following customer reviews for a product.\n\nReviews:\n${reviewsText}\n\nProvide a JSON object with the following fields:\n- summary: a concise 1‑2 sentence sentiment summary\n- keywords: an array of 3‑5 short key themes\n- improvement: a sentence describing a key area for improvement, if any.\nReturn ONLY the JSON object, no extra text.`,
-          max_tokens: 512,
-          temperature: 0.1,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS") {
-            update.logs.map((log) => log.message).forEach(console.log);
-          }
-        },
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
       });
 
-      let jsonString = result?.data?.output || "{}";
-      jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-      aiAnalysis = JSON.parse(jsonString);
+      const message = await anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 512,
+        temperature: 0.1,
+        messages: [
+          {
+            role: "user",
+            content: `You are an expert product analyst. Analyze the following customer reviews for a product.\n\nReviews:\n${reviewsText}\n\nProvide a JSON object with the following fields:\n- summary: a concise 1-2 sentence sentiment summary\n- keywords: an array of 3-5 short key themes\n- improvement: a sentence describing a key area for improvement, if any.\n\nReturn ONLY the JSON object, no extra text.`,
+          },
+        ],
+      });
+
+      const textContent = message.content[0];
+      if (textContent.type === 'text') {
+        let jsonString = textContent.text.replace(/```json/g, "").replace(/```/g, "").trim();
+        aiAnalysis = JSON.parse(jsonString);
+      }
     } catch (error) {
-      console.error("Fal.ai API error:", error);
+      console.error("Anthropic API error:", error);
     }
   }
 
@@ -145,7 +149,7 @@ export async function GET(request: Request) {
     aiAnalysis = {
       summary: "Customers generally appreciate the design and quality (AI analysis disabled).",
       keywords: ["Design", "Quality", "Mock Data"],
-      improvement: "Add Fal.ai API key to enable real insights.",
+      improvement: "Add Anthropic API key to enable real insights.",
     };
   }
 

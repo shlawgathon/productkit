@@ -5,6 +5,7 @@ import com.productkit.models.ImageData
 import com.productkit.models.Product
 import com.productkit.models.ProductStatus
 import com.productkit.repositories.ProductRepository
+import com.productkit.services.AnthropicService
 import com.productkit.services.FalService
 import com.productkit.services.NvidiaService
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +41,7 @@ object JobManager {
     private val userRepo = com.productkit.repositories.UserRepository()
     private val fal = FalService()
     private val nvidia = NvidiaService()
+    private val anthropic = AnthropicService()
     private val storage = com.productkit.services.StorageService()
     private val shopify = com.productkit.services.ShopifyService()
 
@@ -55,13 +57,22 @@ object JobManager {
                 println("[JOB_PROCESSING] Starting job $jobId for product $productId")
                 status.status = "RUNNING"
                 status.progress = 5
-                val product = productRepo.findById(productId) ?: run {
+
+                var product = productRepo.findById(productId) ?: run {
                     println("[JOB_PROCESSING] Product $productId not found")
                     status.status = "ERROR"; return@launch
                 }
 
+                // Update to PROCESSING status
+                product = product.copy(status = ProductStatus.PROCESSING, updatedAt = System.currentTimeMillis())
+                productRepo.update(product)
+
                 var imageData: ImageData? = null
                 if ("hero" in req.assetTypes || "lifestyle" in req.assetTypes || "detail" in req.assetTypes) {
+                    // Update to GENERATING_IMAGES status
+                    product = product.copy(status = ProductStatus.GENERATING_IMAGES, updatedAt = System.currentTimeMillis())
+                    productRepo.update(product)
+
                     println("[JOB_PROCESSING] Generating images for product $productId (types: ${req.assetTypes})")
                     val heroCount = req.count["hero"] ?: 5
                     val baseImage = product.originalImages.firstOrNull()
@@ -99,52 +110,22 @@ object JobManager {
                 }
                 status.progress = 70
 
-                // Generate marketing copy using Fal AI
-                println("[JOB_PROCESSING] Generating marketing copy for product $productId")
+                // Update to GENERATING_COPY status
+                product = product.copy(status = ProductStatus.GENERATING_COPY, updatedAt = System.currentTimeMillis())
+                productRepo.update(product)
+
+                // Generate marketing copy using Anthropic Claude
+                println("[JOB_PROCESSING] Generating marketing copy for product $productId using Anthropic Claude")
                 var productCopy: com.productkit.models.ProductCopy? = null
                 try {
-                    val pdfGuidesInfo = if (product.pdfGuides.isNotEmpty()) {
-                        "\nAdditional Context: This product has ${product.pdfGuides.size} PDF guide(s) available, suggesting it may have technical specifications or detailed documentation."
-                    } else ""
+                    println("[JOB_PROCESSING] Sending prompt to Anthropic for marketing copy generation")
+                    val response = anthropic.generateMarketingCopy(
+                        productName = product.name,
+                        productDescription = product.description,
+                        pdfGuidesCount = product.pdfGuides.size
+                    )
 
-                    val copyPrompt = """
-                        You are an expert marketing copywriter specializing in e-commerce product descriptions. 
-                        Create compelling, conversion-focused marketing copy for the following product.
-                        
-                        Product Name: ${product.name}
-                        Product Description: ${product.description ?: "No description provided"}$pdfGuidesInfo
-                        
-                        Your task is to generate a JSON object with the following fields:
-                        
-                        1. headline: A catchy, benefit-driven headline that grabs attention (max 60 characters)
-                        2. subheadline: A compelling subheadline that expands on the value proposition (max 120 characters)
-                        3. description: A persuasive product description highlighting what makes it special (2-3 sentences, max 300 characters)
-                        4. features: An array of 3-5 specific, tangible product features (e.g., "Premium Leather Construction", "Wireless Charging Compatible", "Water-Resistant Design"). Each feature should be concrete and descriptive (max 50 characters each)
-                        5. benefits: An array of 3-5 customer-focused benefits that explain the value (e.g., "Lasts for Years", "Saves You Time", "Enhances Your Lifestyle"). Focus on outcomes and emotional value (max 50 characters each)
-                        
-                        Important: 
-                        - Features describe WHAT the product has (specifications, materials, capabilities)
-                        - Benefits describe WHY it matters to the customer (value, outcomes, feelings)
-                        - Make features and benefits specific to this product, not generic
-                        - Use professional, persuasive language
-                        
-                        Return ONLY a valid JSON object with these exact keys, no extra text or markdown formatting.
-                    """.trimIndent()
-
-                    println("[JOB_PROCESSING] Sending prompt to Fal AI for marketing copy generation")
-                    val result = fal.fal.subscribe(
-                        endpointId = "fal-ai/llama-3-70b-instruct",
-                        input = mapOf(
-                            "prompt" to copyPrompt,
-                            "max_tokens" to 1024,
-                            "temperature" to 0.7
-                        ),
-                        options = ai.fal.client.kt.SubscribeOptions(logs = true)
-                    ) { update ->
-                        println("[JOB_PROCESSING] Marketing copy generation update: $update")
-                    }
-
-                    var jsonString = result.data.toString()
+                    var jsonString = response
                         .replace("```json", "")
                         .replace("```", "")
                         .trim()
@@ -238,8 +219,12 @@ object JobManager {
                 // Sync to Shopify
                 var shopifyId: String? = null
                 var shopifyUrl: String? = null
-                
+
                 if (generatedAssets != null) {
+                     // Update to SYNCING_SHOPIFY status
+                     product = product.copy(status = ProductStatus.SYNCING_SHOPIFY, updatedAt = System.currentTimeMillis())
+                     productRepo.update(product)
+
                      val user = userRepo.findById(product.userId)
                      if (user?.shopifyStoreUrl != null && user.shopifyAccessToken != null) {
                          val shopifyResult = shopify.createProduct(product, generatedAssets, user.shopifyStoreUrl, user.shopifyAccessToken)

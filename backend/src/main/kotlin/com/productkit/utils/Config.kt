@@ -22,6 +22,7 @@ object Config {
 
     val FAL_API_KEY: String? = dotenv["FAL_KEY"]
     val NVIDIA_API_KEY: String? = dotenv["NVIDIA_API_KEY"]
+    val ANTHROPIC_API_KEY: String? = dotenv["ANTHROPIC_API_KEY"]
 
     val DO_SPACES_KEY: String? = dotenv["DO_SPACES_KEY"]
     val DO_SPACES_SECRET: String? = dotenv["DO_SPACES_SECRET"]

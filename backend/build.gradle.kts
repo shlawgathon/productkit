@@ -1,4 +1,5 @@
 plugins {
+    id("io.ktor.plugin") version "3.3.2"
     kotlin("jvm") version "2.2.20"
     kotlin("plugin.serialization") version "2.2.20"
     application
@@ -54,6 +55,8 @@ dependencies {
     // FAL AI official client
     implementation("ai.fal.client:fal-client-kotlin:0.7.1")
 
+    // Anthropic SDK for Claude
+    implementation("com.anthropic:anthropic-java:2.11.1")
     // AWS
     implementation("software.amazon.awssdk:s3:2.39.1")
 
@@ -76,4 +79,10 @@ kotlin {
 application {
     // Ktor entry point
     mainClass.set("com.productkit.ApplicationKt")
+}
+
+ktor {
+    fatJar {
+        archiveFileName.set("productkit.jar")
+    }
 }
