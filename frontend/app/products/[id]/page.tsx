@@ -95,12 +95,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="space-y-8 pb-20">
-      {/* Processing Progress Bar */}
-      <ProductProcessingProgress
-        productId={id}
-        currentStatus={product.status}
-        onComplete={handleProcessingComplete}
-      />
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
