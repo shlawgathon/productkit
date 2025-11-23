@@ -49,13 +49,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        // const data = undefined;
-        // setReviews(data.reviews || []);
-        // setSentimentAnalysis(data.analytics || {
-        //   summary: "No reviews available for analysis yet.",
-        //   keywords: [],
-        //   improvement: "N/A"
-        // });
+        const data = await api.getReviews(id);
+        setReviews(data || []);
+        // Analytics would normally come from backend, but for now we just load reviews
+        // setSentimentAnalysis(data.analytics || ...);
       } catch (err) {
         console.error("Failed to fetch reviews", err);
       } finally {

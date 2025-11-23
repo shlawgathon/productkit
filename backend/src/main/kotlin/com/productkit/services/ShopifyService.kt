@@ -299,12 +299,72 @@ class ShopifyService {
         return try {
             println("[SHOPIFY] Fetching reviews for product $shopifyProductId from $shopDomain...")
 
-            // Note: Reviews are typically handled by third-party apps in Shopify
-            // This would require integration with specific review app APIs
-            // Common apps: Judge.me, Yotpo, Loox, etc.
+            // Ensure ID is in GID format
+            val gid = if (shopifyProductId.startsWith("gid://")) shopifyProductId else "gid://shopify/Product/$shopifyProductId"
 
-            println("[SHOPIFY] Note: Review fetching requires integration with a specific review app API")
-            emptyList()
+            // Query for 'review' metaobjects linked to this product
+            // We assume a metaobject definition 'review' exists with fields: product, rating, title, body, author
+            val queryStr = "fields.product:'$gid'"
+
+            val graphQLQuery = """
+                query GetReviews(${'$'}query: String!) {
+                  metaobjects(type: "review", first: 50, query: ${'$'}query) {
+                    nodes {
+                      id
+                      updatedAt
+                      rating: field(key: "rating") { value }
+                      title: field(key: "title") { value }
+                      body: field(key: "body") { value }
+                      author: field(key: "author") { value }
+                    }
+                  }
+                }
+            """.trimIndent()
+
+            val apiUrl = "https://${shopDomain}/admin/api/2024-10/graphql.json"
+
+            val response: HttpResponse = client.post(apiUrl) {
+                contentType(ContentType.Application.Json)
+                header("X-Shopify-Access-Token", accessToken)
+                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(
+                    query = graphQLQuery,
+                    variables = buildJsonObject {
+                        put("query", queryStr)
+                    }
+                )))
+            }
+
+            val responseBody = response.bodyAsText()
+            // println("[SHOPIFY] Reviews Response: $responseBody")
+
+            val responseJson = json.parseToJsonElement(responseBody).jsonObject
+            val data = responseJson["data"]?.jsonObject
+            val metaobjects = data?.get("metaobjects")?.jsonObject
+            val nodes = metaobjects?.get("nodes")?.jsonArray
+
+            val reviews = nodes?.mapNotNull { node ->
+                val nodeObj = node.jsonObject
+                val id = nodeObj["id"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val ratingStr = nodeObj["rating"]?.jsonObject?.get("value")?.jsonPrimitive?.content
+                val title = nodeObj["title"]?.jsonObject?.get("value")?.jsonPrimitive?.content
+                val body = nodeObj["body"]?.jsonObject?.get("value")?.jsonPrimitive?.content
+                val author = nodeObj["author"]?.jsonObject?.get("value")?.jsonPrimitive?.content
+                val updatedAt = nodeObj["updatedAt"]?.jsonPrimitive?.content
+
+                val rating = ratingStr?.toIntOrNull() ?: 0
+
+                ShopifyReview(
+                    id = id,
+                    rating = rating,
+                    title = title,
+                    body = body,
+                    author = author,
+                    createdAt = updatedAt
+                )
+            } ?: emptyList()
+
+            println("[SHOPIFY] Found ${reviews.size} reviews for product $shopifyProductId")
+            reviews
         } catch (e: Exception) {
             println("[SHOPIFY] Failed to fetch reviews: ${e.message}")
             e.printStackTrace()
