@@ -14,7 +14,7 @@ export function EmptyState() {
       <p className="mb-8 mt-2 text-sm text-muted-foreground max-w-sm">
         You haven't created any products yet. Start by adding your first product to generate assets.
       </p>
-      <Link href="/onboarding">
+      <Link href="/dashboard/onboarding">
         <Button size="lg" className="gap-2">
           <PlusCircle className="h-4 w-4" />
           Create Your First Product

@@ -10,6 +10,8 @@ import { api } from "@/lib/api-client";
 import GlbViewer from "@/components/dashboard/GlbViewer";
 import { ProductProcessingProgress } from "@/components/dashboard/ProductProcessingProgress";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
+import { formatStatus, getStatusColorClass } from "@/lib/format-status";
+import { cn } from "@/lib/utils";
 
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -225,7 +227,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 </Button>
               </>
             )}
-            <Badge variant="outline" className="h-6">{product.status}</Badge>
+            <Badge variant="outline" className={cn("h-6", getStatusColorClass(product.status))}>
+              {formatStatus(product.status)}
+            </Badge>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -292,6 +296,39 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               </div>
             ))}
           </div>
+
+          {/* Product Infographic */}
+          {product.generatedAssets?.infographicUrl && (
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+              <div className="p-6 border-b bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-orange-600 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-lg">Product Infographic</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2 ml-8">
+                  AI-generated product manual with technical specs and features
+                </p>
+              </div>
+              <div className="p-6">
+                <div className="relative w-full rounded-lg overflow-hidden bg-muted">
+                  <Image
+                    src={product.generatedAssets.infographicUrl}
+                    alt={`${product.name} Infographic`}
+                    width={1200}
+                    height={800}
+                    className="w-full h-auto object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 3D AR Model Preview */}
           {product.generatedAssets?.arModelUrl && (
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
@@ -487,6 +524,31 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   </div>
                 </div>
               )}
+
+              {/* Infographic Asset */}
+              {product.generatedAssets?.infographicUrl && (
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-md bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs">
+                      PNG
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Infographic</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={product.generatedAssets.infographicUrl} download>
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
 
               {/* No assets message */}
               {(!product.generatedAssets?.heroImages || product.generatedAssets.heroImages.length === 0) &&

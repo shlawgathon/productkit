@@ -20,8 +20,10 @@ class AnthropicService(
     private val client: AnthropicClient = AnthropicOkHttpClient.builder()
         .apiKey(Config.ANTHROPIC_API_KEY ?: throw IllegalStateException("ANTHROPIC_API_KEY not configured"))
         .build()
-) {
-    companion object {
+)
+{
+    companion object
+    {
         private const val DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
         private const val DEFAULT_MAX_TOKENS = 1024
     }
@@ -40,9 +42,11 @@ class AnthropicService(
         maxTokens: Int = DEFAULT_MAX_TOKENS,
         temperature: Double = 0.7,
         systemPrompt: String? = null
-    ): String {
+    ): String
+    {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            try {
+            try
+            {
                 val messageParams = MessageCreateParams.builder()
                     .model(DEFAULT_MODEL)
                     .maxTokens(maxTokens.toLong())
@@ -57,7 +61,8 @@ class AnthropicService(
                     )
 
                 // Add system prompt if provided
-                if (systemPrompt != null) {
+                if (systemPrompt != null)
+                {
                     messageParams.system(systemPrompt)
                 }
 
@@ -66,12 +71,15 @@ class AnthropicService(
                 // Extract text from the response
                 val textContent = message.content().firstOrNull()
                     ?: throw IllegalStateException("Unexpected response format from Anthropic API")
-                if (textContent.isText()) {
+                if (textContent.isText())
+                {
                     textContent.text().getOrNull()?.text() ?: ""
-                } else {
+                } else
+                {
                     throw IllegalStateException("Unexpected response format from Anthropic API")
                 }
-            } catch (e: Exception) {
+            } catch (e: Exception)
+            {
                 println("[AnthropicService] Error generating text: ${e.message}")
                 e.printStackTrace()
                 throw e
@@ -85,9 +93,11 @@ class AnthropicService(
      * @param imageUrl URL of the image to analyze
      * @return Description of the image
      */
-    suspend fun understandImage(imageUrl: String): String {
+    suspend fun understandImage(imageUrl: String): String
+    {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            try {
+            try
+            {
                 // Download image
                 val url = URL(imageUrl)
                 val messageParams = MessageCreateParams.builder()
@@ -97,19 +107,27 @@ class AnthropicService(
                         listOf(
                             MessageParam.builder()
                                 .role(MessageParam.Role.USER)
-                                .content(MessageParam.Content.ofBlockParams(
-                                    listOf(
-                                        ContentBlockParam.ofImage(ImageBlockParam
-                                            .builder()
-                                            .source(UrlImageSource.builder()
-                                                .url(imageUrl)
-                                                .build())
-                                            .build()),
-                                        ContentBlockParam.ofText(TextBlockParam.builder()
-                                            .text("Describe this product image in detail. Focus on visual characteristics, style, material, and setting.")
-                                            .build())
+                                .content(
+                                    MessageParam.Content.ofBlockParams(
+                                        listOf(
+                                            ContentBlockParam.ofImage(
+                                                ImageBlockParam
+                                                    .builder()
+                                                    .source(
+                                                        UrlImageSource.builder()
+                                                            .url(imageUrl)
+                                                            .build()
+                                                    )
+                                                    .build()
+                                            ),
+                                            ContentBlockParam.ofText(
+                                                TextBlockParam.builder()
+                                                    .text("Describe this product image in detail. Focus on visual characteristics, style, material, and setting.")
+                                                    .build()
+                                            )
+                                        )
                                     )
-                                ))
+                                )
                                 .build()
                         )
                     )
@@ -120,12 +138,15 @@ class AnthropicService(
                 val textContent = message.content().firstOrNull()
                     ?: throw IllegalStateException("Unexpected response format from Anthropic API")
 
-                if (textContent.isText()) {
+                if (textContent.isText())
+                {
                     textContent.text().getOrNull()?.text() ?: ""
-                } else {
+                } else
+                {
                     ""
                 }
-            } catch (e: Exception) {
+            } catch (e: Exception)
+            {
                 println("[AnthropicService] Error understanding image: ${e.message}")
                 e.printStackTrace()
                 "A high quality product image"
@@ -139,10 +160,15 @@ class AnthropicService(
      * @param description The product description
      * @return List of generated prompts
      */
-    suspend fun generatePromptsFromDescription(description: String, brandGuidelines: com.productkit.models.BrandGuidelines? = null): List<String> {
+    suspend fun generatePromptsFromDescription(
+        description: String,
+        brandGuidelines: com.productkit.models.BrandGuidelines? = null
+    ): List<String>
+    {
         if (description.isBlank()) return emptyList()
 
-        val brandContext = if (brandGuidelines != null) {
+        val brandContext = if (brandGuidelines != null)
+        {
             """
             
             IMPORTANT: You must strictly adhere to the following Brand Guidelines:
@@ -196,8 +222,10 @@ class AnthropicService(
         productName: String,
         productDescription: String?,
         pdfGuidesCount: Int = 0
-    ): String {
-        val pdfGuidesInfo = if (pdfGuidesCount > 0) {
+    ): String
+    {
+        val pdfGuidesInfo = if (pdfGuidesCount > 0)
+        {
             "\nAdditional Context: This product has $pdfGuidesCount PDF guide(s) available, suggesting it may have technical specifications or detailed documentation."
         } else ""
 
@@ -232,5 +260,87 @@ class AnthropicService(
         )
     }
 
+    /**
+     * Enhance a product description based on the image and user's initial description
+     *
+     * @param imageUrl URL of the product image
+     * @param userDescription The user's initial description
+     * @return Enhanced 2-3 sentence description without markdown
+     */
+    suspend fun enhanceProductDescription(imageUrl: String, userDescription: String): String
+    {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try
+            {
+                val messageParams = MessageCreateParams.builder()
+                    .model(DEFAULT_MODEL)
+                    .maxTokens(512)
+                    .messages(
+                        listOf(
+                            MessageParam.builder()
+                                .role(MessageParam.Role.USER)
+                                .content(
+                                    MessageParam.Content.ofBlockParams(
+                                        listOf(
+                                            ContentBlockParam.ofImage(
+                                                ImageBlockParam
+                                                    .builder()
+                                                    .source(
+                                                        UrlImageSource.builder()
+                                                            .url(imageUrl)
+                                                            .build()
+                                                    )
+                                                    .build()
+                                            ),
+                                            ContentBlockParam.ofText(
+                                                TextBlockParam.builder()
+                                                    .text(
+                                                        """
+                                                Based on this product image and the user's description below, create an enhanced, professional product description.
+                                                
+                                                User's description: "$userDescription"
+                                                
+                                                Requirements:
+                                                - Write exactly 2-3 sentences
+                                                - Be specific and descriptive
+                                                - Focus on key features, materials, and benefits visible in the image
+                                                - Use professional, marketing-friendly language
+                                                - DO NOT use markdown formatting (no asterisks, no bold, no italics)
+                                                - Return only plain text
+                                                - Make it compelling and detailed
+                                                
+                                                Return ONLY the enhanced description, nothing else.
+                                            """.trimIndent()
+                                                    )
+                                                    .build()
+                                            )
+                                        )
+                                    )
+                                )
+                                .build()
+                        )
+                    )
+                    .build()
+
+                val message = client.messages().create(messageParams)
+
+                val textContent = message.content().firstOrNull()
+                    ?: throw IllegalStateException("Unexpected response format from Anthropic API")
+
+                if (textContent.isText())
+                {
+                    textContent.text().getOrNull()?.text()?.trim() ?: userDescription
+                } else
+                {
+                    userDescription
+                }
+            } catch (e: Exception)
+            {
+                println("[AnthropicService] Error enhancing description: ${e.message}")
+                e.printStackTrace()
+                userDescription // Return original description on error
+            }
+        }
+    }
 
 }

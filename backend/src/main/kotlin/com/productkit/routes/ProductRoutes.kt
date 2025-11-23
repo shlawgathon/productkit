@@ -16,6 +16,8 @@ private val productRepo = ProductRepository()
 
 data class CreateProductRequest(val name: String, val description: String? = null, val images: List<String> = emptyList(), val pdfGuides: List<String> = emptyList())
 data class UpdateProductRequest(val name: String? = null, val description: String? = null, val images: List<String>? = null)
+data class EnhanceDescriptionRequest(val imageUrl: String, val description: String)
+
 
 fun Route.registerProductRoutes() {
     route("/api/products") {
@@ -100,6 +102,25 @@ fun Route.registerProductRoutes() {
             val id = call.parameters["productId"] ?: return@get call.respond(HttpStatusCode.BadRequest)
             val p = productRepo.findById(id) ?: return@get call.respond(HttpStatusCode.NotFound)
             call.respond(mapOf("status" to p.status, "progress" to 10, "currentStep" to p.status.name))
+        }
+
+        post<EnhanceDescriptionRequest>("/enhance-description") { req ->
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.subject ?: return@post call.respond(HttpStatusCode.Unauthorized)
+            
+            if (req.imageUrl.isBlank() || req.description.isBlank()) {
+                return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "imageUrl and description are required"))
+            }
+            
+            try {
+                val anthropicService = com.productkit.services.AnthropicService()
+                val enhancedDescription = anthropicService.enhanceProductDescription(req.imageUrl, req.description)
+                call.respond(mapOf("enhancedDescription" to enhancedDescription))
+            } catch (e: Exception) {
+                println("[ProductRoutes] Error enhancing description: ${e.message}")
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to enhance description"))
+            }
         }
     }
 }

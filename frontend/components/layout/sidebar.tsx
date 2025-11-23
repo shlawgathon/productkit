@@ -44,7 +44,7 @@ const navSections: NavSection[] = [
     items: [
       {
         title: "Create Product",
-        href: "/onboarding",
+        href: "/dashboard/onboarding",
         icon: PlusCircle,
       },
     ],
