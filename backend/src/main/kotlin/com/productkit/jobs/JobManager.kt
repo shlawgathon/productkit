@@ -87,7 +87,7 @@ object JobManager {
                     }
                 }
 
-                val modelDeferred = async {
+                val modelDeferred = scope.async {
                     println("[JOB_PROCESSING] Generating 3D model for product $productId")
                     val baseImage = product.originalImages.firstOrNull()
                     if (baseImage != null) {
@@ -206,12 +206,11 @@ object JobManager {
                     productCopy
                 }
 
-                // Await all results
+                // Await image and copy results (not 3D model)
                 val imageData = imageDeferred.await()
-                val assets3d = modelDeferred.await()
                 val productCopy = copyDeferred.await()
 
-                // Build GeneratedAssets from the generated data
+                // Build GeneratedAssets from the generated data (without 3D model for now)
                 val existingAssets = product.generatedAssets
                 val heroImageUrls = imageData?.images?.map { it.url } ?: emptyList()
 
@@ -223,7 +222,7 @@ object JobManager {
                     productCopy = productCopy ?: (existingAssets?.productCopy ?: com.productkit.models.ProductCopy("", "", "", emptyList(), emptyList())),
                     technicalSpecs = existingAssets?.technicalSpecs ?: emptyMap(),
                     siteUrl = existingAssets?.siteUrl,
-                    arModelUrl = assets3d ?: existingAssets?.arModelUrl
+                    arModelUrl = existingAssets?.arModelUrl // Keep existing 3D model if any
                 )
 
                 // Sync to Shopify
@@ -244,8 +243,9 @@ object JobManager {
                              
                              // Update product with media (images)
                              println("[SHOPIFY] Adding media to product ${shopifyResult.id}...")
+                             val productWithId = product.copy(shopifyProductId = shopifyResult.id)
                              val mediaUpdated = shopify.updateProductMedia(
-                                 shopifyResult.id, 
+                                 productWithId, 
                                  generatedAssets, 
                                  user.shopifyStoreUrl, 
                                  user.shopifyAccessToken
@@ -271,13 +271,110 @@ object JobManager {
                 )
                 productRepo.update(updated)
 
-                println("[JOB_PROCESSING] Updated product $productId with ${heroImageUrls.size} hero images, 3D model: ${assets3d != null}, and marketing copy")
+                println("[JOB_PROCESSING] Updated product $productId with ${heroImageUrls.size} hero images and marketing copy")
 
                 status.generatedAssets = imageData
-                status.generated3dAssets = assets3d
                 status.progress = 100
                 status.status = "COMPLETED"
                 println("[JOB_PROCESSING] Job $jobId completed successfully")
+
+                // Launch async post-completion job for 3D model and video
+                scope.launch {
+                    try {
+                        println("[JOB_PROCESSING] Starting post-completion assets for product $productId")
+                        
+                        // Update status to POST_COMPLETION_ASSETS
+                        var postProduct = productRepo.findById(productId)
+                        if (postProduct != null) {
+                            postProduct = postProduct.copy(status = ProductStatus.POST_COMPLETION_ASSETS, updatedAt = System.currentTimeMillis())
+                            productRepo.update(postProduct)
+                        }
+
+                        // Launch video generation in parallel
+                        val videoDeferred = async {
+                            println("[JOB_PROCESSING] Generating product video for product $productId")
+                            // Use the first generated hero image as base, or original image if none
+                            val baseImage = heroImageUrls.firstOrNull() ?: product.originalImages.firstOrNull()
+                            if (baseImage != null) {
+                                try {
+                                    val videoUrl = fal.generateProductVideo("Cinematic product showcase", baseImage)
+                                    println("[JOB_PROCESSING] Video generated at: $videoUrl")
+                                    videoUrl
+                                } catch (e: Exception) {
+                                    println("[JOB_PROCESSING] Failed to generate video: ${e.message}")
+                                    e.printStackTrace()
+                                    null
+                                }
+                            } else {
+                                null
+                            }
+                        }
+
+                        // Await 3D model and video generation
+                        val assets3d = modelDeferred.await()
+                        val videoUrl = videoDeferred.await()
+                        
+                        if (assets3d != null || videoUrl != null) {
+                            // Update product with new assets
+                            postProduct = productRepo.findById(productId)
+                            if (postProduct != null) {
+                                val updatedAssets = postProduct.generatedAssets?.copy(
+                                    arModelUrl = assets3d ?: postProduct.generatedAssets?.arModelUrl,
+                                    videoUrl = videoUrl ?: postProduct.generatedAssets?.videoUrl
+                                )
+                                val finalProduct = postProduct.copy(
+                                    generatedAssets = updatedAssets,
+                                    status = ProductStatus.COMPLETED,
+                                    updatedAt = System.currentTimeMillis()
+                                )
+                                productRepo.update(finalProduct)
+                                println("[JOB_PROCESSING] Updated product $productId with post-completion assets (3D: ${assets3d != null}, Video: ${videoUrl != null})")
+                                status.generated3dAssets = assets3d
+
+                                // Upload new assets to Shopify
+                                if (updatedAssets != null) {
+                                    val user = userRepo.findById(postProduct.userId)
+                                    if (user?.shopifyStoreUrl != null && user.shopifyAccessToken != null) {
+                                        println("[SHOPIFY] Uploading post-completion assets to Shopify...")
+                                        val mediaUpdated = shopify.updateProductMedia(
+                                            finalProduct,
+                                            updatedAssets,
+                                            user.shopifyStoreUrl,
+                                            user.shopifyAccessToken
+                                        )
+                                        if (mediaUpdated) {
+                                            println("[SHOPIFY] Post-completion assets successfully added to product")
+                                        } else {
+                                            println("[SHOPIFY] Failed to add post-completion assets to product")
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Even if assets fail, set status back to COMPLETED
+                            postProduct = productRepo.findById(productId)
+                            if (postProduct != null && postProduct.status == ProductStatus.POST_COMPLETION_ASSETS) {
+                                val finalProduct = postProduct.copy(
+                                    status = ProductStatus.COMPLETED,
+                                    updatedAt = System.currentTimeMillis()
+                                )
+                                productRepo.update(finalProduct)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        println("[JOB_PROCESSING] Post-completion assets failed for product $productId: ${e.message}")
+                        e.printStackTrace()
+                        // Ensure product is marked as COMPLETED even if post-completion fails
+                        val postProduct = productRepo.findById(productId)
+                        if (postProduct != null && postProduct.status == ProductStatus.POST_COMPLETION_ASSETS) {
+                            val finalProduct = postProduct.copy(
+                                status = ProductStatus.COMPLETED,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                            productRepo.update(finalProduct)
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 println("[JOB_PROCESSING] Job $jobId failed: ${e.message}")
                 e.printStackTrace()

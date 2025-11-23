@@ -23,7 +23,8 @@ export function ProductProcessingProgress({
         currentStatus === "GENERATING_IMAGES" ||
         currentStatus === "GENERATING_COPY" ||
         currentStatus === "GENERATING_SITE" ||
-        currentStatus === "SYNCING_SHOPIFY"
+        currentStatus === "SYNCING_SHOPIFY" ||
+        currentStatus === "POST_COMPLETION_ASSETS"
     );
 
     useEffect(() => {
@@ -46,14 +47,14 @@ export function ProductProcessingProgress({
 
     return (
         <div className="fixed top-20 right-6 z-50 w-full max-w-sm transition-all duration-300 ease-in-out">
-            <div 
+            <div
                 className={cn(
                     "bg-white/90 backdrop-blur-md dark:bg-gray-900/90 rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 overflow-hidden transition-all duration-300",
                     isCollapsed ? "p-3" : "p-5"
                 )}
             >
                 {/* Header / Collapsed View */}
-                <div 
+                <div
                     className="flex items-center justify-between cursor-pointer group"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                 >
@@ -90,7 +91,7 @@ export function ProductProcessingProgress({
                                 </div>
                             )}
                         </div>
-                        
+
                         <div className="flex flex-col">
                             <h3 className="font-medium text-sm text-gray-900 dark:text-white leading-tight">
                                 {progress === 100 ? "Complete" : "Generating Assets"}
@@ -136,7 +137,7 @@ export function ProductProcessingProgress({
                                 const stepProgress = (i + 1) * 25;
                                 const isActive = progress >= stepProgress - 25;
                                 const isCompleted = progress >= stepProgress;
-                                
+
                                 return (
                                     <div key={step} className="flex flex-col items-center gap-1">
                                         <div className={cn(

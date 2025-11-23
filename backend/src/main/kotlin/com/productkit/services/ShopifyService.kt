@@ -208,14 +208,14 @@ class ShopifyService {
         }
     }
 
-    suspend fun updateProductMedia(productId: String, assets: GeneratedAssets, shopDomain: String, accessToken: String): Boolean {
+    suspend fun updateProductMedia(product: Product, assets: GeneratedAssets, shopDomain: String, accessToken: String): Boolean {
         if (shopDomain.isBlank() || accessToken.isBlank()) {
             println("[SHOPIFY] Missing credentials, skipping media update")
             return false
         }
 
         try {
-            println("[SHOPIFY] Updating product $productId with media...")
+            println("[SHOPIFY] Updating product ${product.shopifyProductId ?: product._id} with media...")
 
             // Build media array from generated assets
             val mediaItems = buildList {
@@ -251,6 +251,28 @@ class ShopifyService {
                         }
                     """.trimIndent())
                 }
+
+                // Add 3D Model if available
+                if (assets.arModelUrl != null) {
+                    add("""
+                        {
+                            originalSource: "${assets.arModelUrl}",
+                            alt: "3D Model of ${product.name.take(50).replace("\"", "\\\"")}",
+                            mediaContentType: MODEL_3D
+                        }
+                    """.trimIndent())
+                }
+
+                // Add Video if available
+                if (assets.videoUrl != null) {
+                    add("""
+                        {
+                            originalSource: "${assets.videoUrl}",
+                            alt: "Product Showcase Video",
+                            mediaContentType: VIDEO
+                        }
+                    """.trimIndent())
+                }
             }
 
             if (mediaItems.isEmpty()) {
@@ -263,7 +285,7 @@ class ShopifyService {
                 mutation {
                   productUpdate(
                     product: {
-                      id: "$productId"
+                      id: "${product.shopifyProductId ?: product._id}"
                     },
                     media: [
                       ${mediaItems.joinToString(",\n                      ")}
@@ -314,7 +336,7 @@ class ShopifyService {
                 return false
             }
 
-            println("[SHOPIFY] Media updated successfully for product $productId")
+            println("[SHOPIFY] Media updated successfully for product ${product.shopifyProductId ?: product._id}")
             return true
         } catch (e: Exception) {
             println("[SHOPIFY] Failed to update product media: ${e.message}")
@@ -323,96 +345,7 @@ class ShopifyService {
         }
     }
 
-    data class ShopifyReview(
-        val id: String,
-        val rating: Int,
-        val title: String?,
-        val body: String?,
-        val author: String?,
-        val createdAt: String?
-    )
 
-    suspend fun getProductReviews(shopifyProductId: String, shopDomain: String, accessToken: String): List<ShopifyReview> {
-        if (shopDomain.isBlank() || accessToken.isBlank()) {
-            println("[SHOPIFY] Missing credentials, cannot fetch reviews")
-            return emptyList()
-        }
-
-        return try {
-            println("[SHOPIFY] Fetching reviews for product $shopifyProductId from $shopDomain...")
-
-            // Ensure ID is in GID format
-            val gid = if (shopifyProductId.startsWith("gid://")) shopifyProductId else "gid://shopify/Product/$shopifyProductId"
-
-            // Query for 'review' metaobjects linked to this product
-            // We assume a metaobject definition 'review' exists with fields: product, rating, title, body, author
-            val queryStr = "fields.product:'$gid'"
-
-            val graphQLQuery = """
-                query GetReviews(${'$'}query: String!) {
-                  metaobjects(type: "review", first: 50, query: ${'$'}query) {
-                    nodes {
-                      id
-                      updatedAt
-                      rating: field(key: "rating") { value }
-                      title: field(key: "title") { value }
-                      body: field(key: "body") { value }
-                      author: field(key: "author") { value }
-                    }
-                  }
-                }
-            """.trimIndent()
-
-            val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
-
-            val response: HttpResponse = client.post(apiUrl) {
-                contentType(ContentType.Application.Json)
-                header("X-Shopify-Access-Token", accessToken)
-                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(
-                    query = graphQLQuery,
-                    variables = buildJsonObject {
-                        put("query", queryStr)
-                    }
-                )))
-            }
-
-            val responseBody = response.bodyAsText()
-            // println("[SHOPIFY] Reviews Response: $responseBody")
-
-            val responseJson = json.parseToJsonElement(responseBody).jsonObject
-            val data = responseJson["data"]?.jsonObject
-            val metaobjects = data?.get("metaobjects")?.jsonObject
-            val nodes = metaobjects?.get("nodes")?.jsonArray
-
-            val reviews = nodes?.mapNotNull { node ->
-                val nodeObj = node.jsonObject
-                val id = nodeObj["id"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                val ratingStr = nodeObj["rating"]?.jsonObject?.get("value")?.jsonPrimitive?.content
-                val title = nodeObj["title"]?.jsonObject?.get("value")?.jsonPrimitive?.content
-                val body = nodeObj["body"]?.jsonObject?.get("value")?.jsonPrimitive?.content
-                val author = nodeObj["author"]?.jsonObject?.get("value")?.jsonPrimitive?.content
-                val updatedAt = nodeObj["updatedAt"]?.jsonPrimitive?.content
-
-                val rating = ratingStr?.toIntOrNull() ?: 0
-
-                ShopifyReview(
-                    id = id,
-                    rating = rating,
-                    title = title,
-                    body = body,
-                    author = author,
-                    createdAt = updatedAt
-                )
-            } ?: emptyList()
-
-            println("[SHOPIFY] Found ${reviews.size} reviews for product $shopifyProductId")
-            reviews
-        } catch (e: Exception) {
-            println("[SHOPIFY] Failed to fetch reviews: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
 
     fun close() {
         client.close()

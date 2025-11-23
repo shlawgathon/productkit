@@ -40,6 +40,7 @@ enum class ProductStatus {
     GENERATING_SITE,
     SYNCING_SHOPIFY,
     COMPLETED,
+    POST_COMPLETION_ASSETS,
     ERROR
 }
 
@@ -51,7 +52,8 @@ data class GeneratedAssets(
     val productCopy: ProductCopy = ProductCopy("", "", "", emptyList(), emptyList()),
     val technicalSpecs: Map<String, String> = emptyMap(),
     val siteUrl: String? = null,
-    val arModelUrl: String? = null
+    val arModelUrl: String? = null,
+    val videoUrl: String? = null
 )
 
 data class ProductCopy(

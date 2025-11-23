@@ -73,10 +73,12 @@ export default function DashboardPage() {
     });
   };
 
-  const mapStatus = (backendStatus: string): "active" | "draft" | "generating" => {
+  const mapStatus = (backendStatus: string): "active" | "draft" | "generating" | "post_completion_assets" => {
     switch (backendStatus) {
       case "COMPLETED":
         return "active";
+      case "POST_COMPLETION_ASSETS":
+        return "post_completion_assets";
       case "DRAFT":
       case "ERROR":
         return "draft";
@@ -122,10 +124,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Show processing widget for the first generating product found */}
-      {products.find(p => p.status === "generating") && (
+      {/* Show processing widget for the first generating or finalizing product found */}
+      {products.find(p => p.status === "generating" || p.status === "post_completion_assets") && (
         <ProductProcessingProgress
-          productId={products.find(p => p.status === "generating")!.id}
+          productId={products.find(p => p.status === "generating" || p.status === "post_completion_assets")!.id}
           currentStatus="PROCESSING" // Force processing status for the widget
           onComplete={() => {
             // Refresh products when complete

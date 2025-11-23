@@ -149,7 +149,7 @@ export default function SettingsPage() {
               Shopify Integration
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Connect your Shopify store to enable AI customer insights and review analytics.
+              Connect your Shopify store to enable product publishing and syncing.
             </p>
           </div>
 
@@ -181,12 +181,7 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> AI Customer Insights will only work after you've configured your Shopify credentials.
-                Without these credentials, you'll see mock review data.
-              </p>
-            </div>
+
           </div>
         </div>
 

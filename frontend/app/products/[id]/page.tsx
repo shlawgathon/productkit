@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Download, Share2, Edit, MoreHorizontal, Copy, Check, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Download, Share2, Edit, MoreHorizontal, Copy, Check, Trash2, ShoppingBag, Video as VideoIcon, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
@@ -36,37 +36,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     fetchProduct();
   }, [id]);
 
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [loadingReviews, setLoadingReviews] = useState(true);
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [sentimentAnalysis, setSentimentAnalysis] = useState<any>({
-    summary: "No reviews available for analysis yet.",
-    keywords: [],
-    improvement: "N/A"
-  });
 
-  // Fetch reviews on mount
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const data = await api.getReviews(id);
-        setReviews(data || []);
-        // Analytics would normally come from backend, but for now we just load reviews
-        // setSentimentAnalysis(data.analytics || ...);
-      } catch (err) {
-        console.error("Failed to fetch reviews", err);
-      } finally {
-        setLoadingReviews(false);
-      }
-    };
-
-    fetchReviews();
-  }, [id]);
-
-  // Calculate analytics
-  const averageRating = reviews.length > 0
-    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
-    : "0.0";
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -170,71 +140,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               </div>
             ))}
           </div>
-          {/* AI Analytics Section */}
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-            <div
-              className="p-6 border-b bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 cursor-pointer hover:bg-blue-100/50 transition-colors"
-              onClick={() => setShowAnalytics(!showAnalytics)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-blue-600 text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                  </div>
-                  <h3 className="font-semibold text-lg">AI Customer Insights</h3>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <span className="font-bold text-foreground">{averageRating}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-400"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                    <span className="ml-1">({reviews.length})</span>
-                  </div>
-                  {showAnalytics ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-muted-foreground"><path d="m18 15-6-6-6 6" /></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-muted-foreground"><path d="m6 9 6 6 6-6" /></svg>
-                  )}
-                </div>
-              </div>
-              {!showAnalytics && (
-                <p className="text-sm text-muted-foreground mt-2 ml-8">
-                  Click to view analysis based on {reviews.length} customer reviews
-                </p>
-              )}
-            </div>
-
-            {showAnalytics && (
-              <div className="p-6 grid gap-6 md:grid-cols-2 animate-in fade-in slide-in-from-top-2">
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Sentiment Summary</h4>
-                  <p className="text-sm leading-relaxed">{loadingReviews ? "Analyzing reviews..." : sentimentAnalysis.summary}</p>
-                </div>
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Key Themes</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {loadingReviews ? (
-                      <span className="text-sm text-muted-foreground">Loading...</span>
-                    ) : (
-                      sentimentAnalysis.keywords.map((keyword: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-                          {keyword}
-                        </Badge>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <div className="md:col-span-2 pt-4 border-t">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 text-amber-900 border border-amber-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <div>
-                      <span className="font-medium block text-sm mb-1">Area for Improvement</span>
-                      <p className="text-sm opacity-90">{loadingReviews ? "Analyzing..." : sentimentAnalysis.improvement}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}</div>
-
           {/* 3D AR Model Preview */}
           {product.generatedAssets?.arModelUrl && (
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
@@ -259,6 +164,33 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   width="100%"
                   height={500}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Product Video Preview */}
+          {product.generatedAssets?.videoUrl && (
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+              <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-blue-600 text-white">
+                    <VideoIcon className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Product Showcase Video</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2 ml-8">
+                  AI-generated cinematic product showcase
+                </p>
+              </div>
+              <div className="p-6">
+                <div className="aspect-video w-full rounded-lg overflow-hidden bg-black relative group">
+                  <video
+                    src={product.generatedAssets.videoUrl}
+                    controls
+                    className="w-full h-full object-contain"
+                    poster={product.generatedAssets.heroImages?.[0] || product.originalImages?.[0]}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -338,6 +270,30 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" asChild>
                       <a href={product.generatedAssets.arModelUrl} download>
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Video Asset */}
+              {product.generatedAssets?.videoUrl && (
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                      MP4
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Showcase Video</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={product.generatedAssets.videoUrl} download>
                         <Download className="h-4 w-4" />
                       </a>
                     </Button>

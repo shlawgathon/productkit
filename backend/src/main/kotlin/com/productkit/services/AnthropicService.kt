@@ -217,31 +217,5 @@ class AnthropicService(
         )
     }
 
-    /**
-     * Analyze customer reviews and generate insights
-     *
-     * @param reviewsText Combined text of all reviews
-     * @return JSON string containing the analysis
-     */
-    suspend fun analyzeReviews(reviewsText: String): String {
-        val prompt = """
-            You are an expert product analyst. Analyze the following customer reviews for a product.
-            
-            Reviews:
-            $reviewsText
-            
-            Provide a JSON object with the following fields:
-            - summary: a concise 1-2 sentence sentiment summary
-            - keywords: an array of 3-5 short key themes
-            - improvement: a sentence describing a key area for improvement, if any.
-            
-            Return ONLY the JSON object, no extra text.
-        """.trimIndent()
 
-        return generateText(
-            prompt = prompt,
-            maxTokens = 512,
-            temperature = 0.1
-        )
-    }
 }

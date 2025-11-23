@@ -240,6 +240,35 @@ class FalService(
     }
 
     /**
+     * Generate a product showcase video using Fal AI veo2 model.
+     * Returns a URL to the generated video file.
+     */
+    suspend fun generateProductVideo(prompt: String, imageUrl: String): String {
+        val input = mapOf(
+            "prompt" to prompt,
+            "image_url" to imageUrl
+        )
+
+        println("[FalService] Generating video with prompt: $prompt")
+
+        val result = fal.subscribe(
+            endpointId = "fal-ai/veo2/image-to-video",
+            input = input,
+            options = SubscribeOptions(
+                logs = true
+            )
+        ) { update ->
+            if (update is QueueStatus.InProgress) {
+                println("[FalService] Video generation progress: ${update.logs.lastOrNull()?.message ?: "Processing..."}")
+            }
+        }
+
+        val videoUrl = result.data.asJsonObject.get("video").asJsonObject.get("url").asString
+        println("[FalService] Video generated successfully: $videoUrl")
+        return videoUrl
+    }
+
+    /**
      * Retrieve batch results using request IDs
      */
     suspend fun getBatchResults(

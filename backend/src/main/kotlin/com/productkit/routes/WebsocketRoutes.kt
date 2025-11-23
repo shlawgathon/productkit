@@ -58,6 +58,7 @@ fun Routing.registerWebsocketRoutes() {
                     ProductStatus.GENERATING_SITE -> 75
                     ProductStatus.SYNCING_SHOPIFY -> 85
                     ProductStatus.COMPLETED -> 100
+                    ProductStatus.POST_COMPLETION_ASSETS -> 95
                     ProductStatus.ERROR -> lastProgress
                 }
                 
@@ -71,6 +72,7 @@ fun Routing.registerWebsocketRoutes() {
                         ProductStatus.GENERATING_SITE -> "Building product site..."
                         ProductStatus.SYNCING_SHOPIFY -> "Syncing to Shopify..."
                         ProductStatus.COMPLETED -> "Product ready!"
+                        ProductStatus.POST_COMPLETION_ASSETS -> "Finalizing 3D models and videos..."
                         ProductStatus.ERROR -> "An error occurred"
                     }
                     
@@ -88,6 +90,7 @@ fun Routing.registerWebsocketRoutes() {
                 }
                 
                 // If completed or error, close the connection
+                // Keep open for POST_COMPLETION_ASSETS to continue monitoring
                 if (currentStatus == ProductStatus.COMPLETED || currentStatus == ProductStatus.ERROR) {
                     delay(500) // Give client time to process final message
                     break

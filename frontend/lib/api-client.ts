@@ -190,9 +190,7 @@ class ApiClient {
         return this.request<any>(`/api/products/${id}/status`);
     }
 
-    public async getReviews(productId: string) {
-        return this.request<any>(`/api/reviews?productId=${productId}`);
-    }
+
 
     // Settings
     public async getSettings() {

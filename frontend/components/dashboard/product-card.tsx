@@ -25,12 +25,13 @@ export interface Product {
   id: string;
   name: string;
   slug: string;
-  status: "active" | "draft" | "generating" | "error";
+  status: "active" | "draft" | "generating" | "error" | "post_completion_assets";
   thumbnailUrl: string;
   lastModified: string;
   updatedAt?: string; // For sorting
   generatedAssets?: {
     arModelUrl?: string;
+    videoUrl?: string;
     // other asset fields can be added as needed
   };
   shopifyStorefrontUrl?: string;
@@ -123,11 +124,14 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite }: P
                 "shadow-sm backdrop-blur-md bg-white/90 border-0",
                 product.status === "active" && "text-green-600 font-medium",
                 product.status === "generating" && "text-blue-600 font-medium",
+                product.status === "post_completion_assets" && "text-purple-600 font-medium",
                 product.status === "error" && "text-red-600 font-medium",
                 product.status === "draft" && "text-gray-600 font-medium",
               )}
             >
-              {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+              {product.status === "post_completion_assets"
+                ? "Finalizing..."
+                : product.status.charAt(0).toUpperCase() + product.status.slice(1)}
             </Badge>
           </div>
           
