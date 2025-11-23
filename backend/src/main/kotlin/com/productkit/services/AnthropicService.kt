@@ -139,8 +139,21 @@ class AnthropicService(
      * @param description The product description
      * @return List of generated prompts
      */
-    suspend fun generatePromptsFromDescription(description: String): List<String> {
+    suspend fun generatePromptsFromDescription(description: String, brandGuidelines: com.productkit.models.BrandGuidelines? = null): List<String> {
         if (description.isBlank()) return emptyList()
+
+        val brandContext = if (brandGuidelines != null) {
+            """
+            
+            IMPORTANT: You must strictly adhere to the following Brand Guidelines:
+            - Brand Tone: ${brandGuidelines.tone}
+            - Primary Color: ${brandGuidelines.primaryColor}
+            - Secondary Color: ${brandGuidelines.secondaryColor}
+            - Font Family: ${brandGuidelines.fontFamily} (Use this to infer the visual style/mood)
+            
+            Ensure all generated prompts reflect this brand identity and tone.
+            """.trimIndent()
+        } else ""
 
         val prompt = """
             Based on the following description, generate five distinct, high-quality AI image generation prompts for this product.
@@ -150,6 +163,8 @@ class AnthropicService(
             3. Close-up detail
             4. Outdoor/Nature environment
             5. Creative/Artistic composition
+            
+            $brandContext
             
             Return each prompt on a separate line, numbered 1-5.
             

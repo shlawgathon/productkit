@@ -7,7 +7,7 @@ import com.productkit.models.ProductStatus
 import com.productkit.repositories.ProductRepository
 import com.productkit.services.AnthropicService
 import com.productkit.services.FalService
-import com.productkit.services.NvidiaService
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,8 +40,8 @@ object JobManager {
 
     private val productRepo = ProductRepository()
     private val userRepo = com.productkit.repositories.UserRepository()
+    private val settingsRepo = com.productkit.repositories.SettingsRepository()
     private val fal = FalService()
-    private val nvidia = NvidiaService()
     private val anthropic = AnthropicService()
     private val storage = com.productkit.services.StorageService()
     private val shopify = com.productkit.services.ShopifyService()
@@ -75,7 +75,9 @@ object JobManager {
                         val heroCount = req.count["hero"] ?: 5
                         val baseImage = product.originalImages.firstOrNull()
                         if (baseImage != null) {
-                            val images = fal.generateProductImages(productId, baseImage, type = "hero", count = heroCount)
+                            val settings = settingsRepo.get(product.userId)
+                            val brandGuidelines = settings?.brandGuidelines
+                            val images = fal.generateProductImages(productId, baseImage, type = "hero", count = heroCount, brandGuidelines = brandGuidelines)
                             synchronized(status) { status.progress += 35 }
                             images
                         } else {
