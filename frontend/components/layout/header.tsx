@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link";
-import { Menu, Search, User as UserIcon, Settings, LogOut, Upload } from "lucide-react";
+import { Menu, User as UserIcon, Settings, LogOut, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api-client";
@@ -56,16 +56,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Search placeholder */}
-          <div className="hidden md:flex items-center relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search products..."
-              className="h-9 w-64 rounded-full border border-input bg-transparent pl-9 pr-4 text-sm outline-none focus:border-primary transition-colors"
-            />
-          </div>
-
           <NotificationBell />
 
           <div className="relative group">
