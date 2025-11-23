@@ -29,6 +29,7 @@ function OnboardingContent() {
   const [productDescription, setProductDescription] = useState("");
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'uploading' | 'creating' | 'success'>('idle');
   // New state for inline validation errors
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -91,6 +92,7 @@ function OnboardingContent() {
 
   const handleCreateProduct = async () => {
     setIsSubmitting(true);
+    setSubmissionStatus('uploading');
     try {
       const imageUrls: string[] = [];
 
@@ -124,6 +126,7 @@ function OnboardingContent() {
         imageUrls.push("https://placehold.co/600x400?text=No+Image+Uploaded");
       }
 
+      setSubmissionStatus('creating');
       const response = await api.createProduct({
         name: productName,
         description: productDescription,
@@ -131,13 +134,21 @@ function OnboardingContent() {
         pdfGuides: pdfUrls // Include PDF guides
       });
 
-      // Redirect to the product page or status page
-      router.push(`/products/${response.productId}`);
+      setSubmissionStatus('success');
+      
+      // Short delay to show success state before redirecting
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
+      
     } catch (error) {
       console.error("Failed to create product", error);
-      // Handle error (show toast, etc.)
+      setSubmissionStatus('idle');
+      setFormError("Failed to create product. Please try again.");
     } finally {
-      setIsSubmitting(false);
+      if (submissionStatus !== 'success') {
+         setIsSubmitting(false);
+      }
     }
   };
 
@@ -335,12 +346,16 @@ function OnboardingContent() {
               {currentStep === steps.length - 1 ? (
                 <Button
                   size="lg"
-                  className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                  className="gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all"
                   onClick={handleCreateProduct}
                   disabled={isSubmitting || productName.trim() === '' || productDescription.trim() === '' || files.length === 0}
                 >
                   <Sparkles className="h-4 w-4" />
-                  {isSubmitting ? "Creating..." : "Generate Assets"}
+                  {isSubmitting ? (
+                    submissionStatus === 'uploading' ? "Uploading Assets..." : 
+                    submissionStatus === 'creating' ? "Sending Request..." : 
+                    submissionStatus === 'success' ? "Request Received!" : "Processing..."
+                  ) : "Generate Assets"}
                 </Button>
               ) : (
                 <Button onClick={handleNext} size="lg" className="gap-2">
@@ -357,7 +372,7 @@ function OnboardingContent() {
               <div className="rounded-2xl border bg-muted/30 p-8 backdrop-blur-sm">
                 <h3 className="font-semibold mb-4">Preview</h3>
                 <div className="aspect-3/4 rounded-xl bg-white shadow-sm border overflow-hidden relative group">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10 flex flex-col justify-end p-6 text-white">
+                  <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/60 z-10 flex flex-col justify-end p-6 text-white">
                     <h4 className="text-xl font-bold">{productName || "Product Name"}</h4>
                     <p className="text-sm opacity-80 line-clamp-2">{productDescription || "Product description will appear here..."}</p>
                   </div>

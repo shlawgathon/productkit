@@ -1,6 +1,7 @@
 "use client";
 
 import { ProductCard, type Product } from "@/components/dashboard/product-card";
+import { ProductProcessingProgress } from "@/components/dashboard/ProductProcessingProgress";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { FAB } from "@/components/dashboard/fab";
 import { useEffect, useState } from "react";
@@ -59,6 +60,17 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Show processing widget for the first generating product found */}
+      {products.find(p => p.status === "generating") && (
+        <ProductProcessingProgress
+          productId={products.find(p => p.status === "generating")!.id}
+          currentStatus="PROCESSING" // Force processing status for the widget
+          onComplete={() => {
+            // Refresh products when complete
+            window.location.reload();
+          }}
+        />
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
