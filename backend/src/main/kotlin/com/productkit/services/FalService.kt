@@ -19,7 +19,7 @@ class FalService(
         // Seedream v4 edit model endpoint
         private const val IMAGE_EDIT_MODEL = "fal-ai/beta-image-232/edit"
     }
-    
+
     private val anthropicService = AnthropicService()
 
     /**
@@ -45,7 +45,7 @@ class FalService(
         // Then, generate marketing prompts using a Llama 3 model
         val generatedPrompts = generatePromptsFromDescription(understoodDescription)
         println("[PROMPTS] $generatedPrompts")
-        
+
         // Ensure we have at least some prompts; fallback to default if needed
         val prompts = if (generatedPrompts.isNotEmpty()) generatedPrompts else listOf(
             "Professional studio product photography with clean white background, perfect lighting, high resolution, commercial quality",
@@ -184,11 +184,11 @@ class FalService(
     suspend fun generate3DModelGLB(baseImage: String): String {
         // Prepare input for omnipart model. The model expects an input image URL.
         val input = mapOf(
-            "input_image_url" to baseImage
+            "image_url" to baseImage
         )
         // Submit the job to the omnipart endpoint.
         val submission = fal.queue.submit(
-            endpointId = "fal-ai/omnipart",
+            endpointId = "tripo3d/tripo/v2.5/image-to-3d",
             input = input,
             options = SubmitOptions()
         )
@@ -197,17 +197,10 @@ class FalService(
         while (attempts < 100) { // wait up to ~30 seconds
             try {
                 val result = fal.queue.result(
-                    endpointId = "fal-ai/omnipart",
+                    endpointId = "tripo3d/tripo/v2.5/image-to-3d",
                     requestId = submission.requestId
                 )
-                // Assuming result.data contains a field "url" with the GLB location.
-                val jsonStr = result.data.toString()
-                // Simple extraction of URL using regex.
-                val regex = Regex("\\\"url\\\":\\\"([^\\\"]+)\\\"")
-                val match = regex.find(jsonStr)
-                if (match != null) {
-                    return match.groupValues[1]
-                }
+                return result.data.asJsonObject.get("model_mesh").asJsonObject.get("url").asString
             } catch (e: Exception) {
                 // If not ready yet, ignore and retry.
             }
