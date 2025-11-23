@@ -5,9 +5,9 @@ import { Canvas } from "@react-three/fiber";
 import { useGLTF, Environment, OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import { Loader2, AlertCircle, Maximize2 } from "lucide-react";
 
-function Model({ url }: { url: string }) {
+function Model({ url, scale = 1.5 }: { url: string; scale?: number }) {
     const { scene } = useGLTF(url);
-    return <primitive object={scene} scale={1.5} />;
+    return <primitive object={scene} scale={scale} />;
 }
 
 interface GlbViewerProps {
@@ -15,6 +15,7 @@ interface GlbViewerProps {
     width?: number | string;
     height?: number | string;
     className?: string;
+    initialZoom?: 'close' | 'normal';
 }
 
 function ErrorFallback() {
@@ -30,9 +31,16 @@ export default function GlbViewer({
     url,
     width = "100%",
     height = 400,
-    className
+    className,
+    initialZoom = 'normal'
 }: GlbViewerProps) {
     const [error, setError] = useState(false);
+    
+    // Adjust camera and model based on zoom level
+    // 'normal' is for detail page (closer), 'close' is for thumbnails (pulled back)
+    const cameraPosition: [number, number, number] = initialZoom === 'close' ? [0, 0, 4] : [0, 0, 2.5];
+    const modelScale = initialZoom === 'close' ? 2 : 3;
+    const minDistance = initialZoom === 'close' ? 1.5 : 0.8;
 
     if (error) {
         return (
@@ -66,7 +74,7 @@ export default function GlbViewer({
                     onError={() => setError(true)}
                     gl={{ antialias: true, alpha: true }}
                 >
-                    <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
+                    <PerspectiveCamera makeDefault position={cameraPosition} fov={50} />
 
                     {/* Lighting Setup */}
                     <ambientLight intensity={0.5} />
@@ -83,7 +91,7 @@ export default function GlbViewer({
                     <Environment preset="studio" />
 
                     {/* Model */}
-                    <Model url={url} />
+                    <Model url={url} scale={modelScale} />
 
                     {/* Controls */}
                     <OrbitControls
@@ -92,7 +100,7 @@ export default function GlbViewer({
                         autoRotateSpeed={0.5}
                         enableDamping
                         dampingFactor={0.05}
-                        minDistance={2}
+                        minDistance={minDistance}
                         maxDistance={10}
                         minPolarAngle={Math.PI / 4}
                         maxPolarAngle={Math.PI / 1.5}

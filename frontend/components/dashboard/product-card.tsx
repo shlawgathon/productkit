@@ -51,6 +51,7 @@ interface ProductCardProps {
 export function ProductCard({ product, isFavorite = false, onToggleFavorite, onDelete }: ProductCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [show3D, setShow3D] = useState(false);
   const router = useRouter();
   const handleDelete = async () => {
     try {
@@ -71,12 +72,13 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite, onD
       <div className="group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
         {/* Image/3D Model Container */}
         <div className="aspect-video w-full overflow-hidden bg-muted relative">
-          {product.generatedAssets?.arModelUrl ? (
+          {product.generatedAssets?.arModelUrl && show3D ? (
             <GlbViewer
               url={product.generatedAssets.arModelUrl}
               width="100%"
               height="100%"
               className="border-0"
+              initialZoom="close"
             />
           ) : product.thumbnailUrl ? (
             <Image
@@ -92,7 +94,10 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite, onD
           )}
 
           {/* Overlay Actions */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px]">
+          <div className={cn(
+            "absolute inset-0 bg-black/40 opacity-0 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]",
+            !show3D && "group-hover:opacity-100"
+          )}>
             <Link href={`/products/${product.id}`}>
               <Button size="icon" variant="secondary" className="h-9 w-9 rounded-full">
                 <ExternalLink className="h-4 w-4" />
@@ -120,20 +125,46 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite, onD
             <Badge
               variant="outline"
               className={cn(
-                "shadow-sm backdrop-blur-md bg-white/90 border-0",
-                product.status === "active" && "text-green-600 font-medium",
-                product.status === "generating" && "text-blue-600 font-medium",
-                product.status === "post_completion_assets" && "text-purple-600 font-medium",
-                product.status === "error" && "text-red-600 font-medium",
-                product.status === "draft" && "text-gray-600 font-medium",
+                "shadow-sm backdrop-blur-md bg-background/90 border-0",
+                product.status === "active" && "text-green-600 dark:text-green-400 font-medium",
+                product.status === "generating" && "text-blue-600 dark:text-blue-400 font-medium",
+                product.status === "post_completion_assets" && "text-purple-600 dark:text-purple-400 font-medium",
+                product.status === "error" && "text-red-600 dark:text-red-400 font-medium",
+                product.status === "draft" && "text-muted-foreground font-medium",
               )}
             >
               {formatStatus(product.status)}
             </Badge>
           </div>
 
-          {/* Favorite Star */}
-          <div className="absolute top-3 right-3">
+          {/* Top Right Actions */}
+          <div className="absolute top-3 right-3 flex gap-2">
+            {/* 3D Toggle Button (only show if AR model exists) */}
+            {product.generatedAssets?.arModelUrl && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShow3D(!show3D);
+                }}
+                className={cn(
+                  "h-8 w-8 rounded-full transition-colors",
+                  show3D 
+                    ? "bg-purple-500 hover:bg-purple-600 text-white" 
+                    : "bg-transparent hover:bg-white/20 text-white"
+                )}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+              </Button>
+            )}
+            
+            {/* Favorite Star */}
             <Button
               size="icon"
               variant="ghost"

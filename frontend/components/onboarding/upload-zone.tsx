@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
@@ -18,15 +18,17 @@ export function UploadZone({ onFilesSelected, className, initialFiles = [] }: Up
   const [previews, setPreviews] = useState<string[]>([]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles = [...files, ...acceptedFiles];
-    setFiles(newFiles);
-    onFilesSelected(newFiles);
+    setFiles(currentFiles => {
+      const newFiles = [...currentFiles, ...acceptedFiles];
+      onFilesSelected(newFiles);
+      return newFiles;
+    });
 
     const newPreviews = acceptedFiles.map(file => URL.createObjectURL(file));
     setPreviews(prev => [...prev, ...newPreviews]);
-  }, [files, onFilesSelected]);
+  }, [onFilesSelected]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, inputRef } = useDropzone({
     onDrop,
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.webp']
@@ -36,12 +38,19 @@ export function UploadZone({ onFilesSelected, className, initialFiles = [] }: Up
 
   const removePreview = (index: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newFiles = files.filter((_, i) => i !== index);
-    const newPreviews = previews.filter((_, i) => i !== index);
-
-    setFiles(newFiles);
-    setPreviews(newPreviews);
-    onFilesSelected(newFiles);
+    
+    setFiles(currentFiles => {
+      const newFiles = currentFiles.filter((_, i) => i !== index);
+      onFilesSelected(newFiles);
+      return newFiles;
+    });
+    
+    setPreviews(currentPreviews => currentPreviews.filter((_, i) => i !== index));
+    
+    // Reset the file input to allow re-uploading
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
   };
 
   return (

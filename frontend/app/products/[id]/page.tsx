@@ -20,6 +20,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [activeImage, setActiveImage] = useState("");
   const [copied, setCopied] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [show3D, setShow3D] = useState(false);
 
   // Edit state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -248,7 +249,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         {/* Main Content - Gallery */}
         <div className="lg:col-span-2 space-y-4">
           <div className="aspect-video relative overflow-hidden rounded-xl border bg-muted">
-            {activeImage ? (
+            {product.generatedAssets?.arModelUrl && show3D ? (
+              <GlbViewer
+                url={product.generatedAssets.arModelUrl}
+                width="100%"
+                height="100%"
+                className="border-0"
+              />
+            ) : activeImage ? (
               <Image
                 src={activeImage}
                 alt={product.name}
@@ -258,6 +266,28 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">No image</div>
+            )}
+            
+            
+            {/* 3D Toggle Button */}
+            {product.generatedAssets?.arModelUrl && (
+              <Button
+                variant="ghost"
+                onClick={() => setShow3D(!show3D)}
+                className={cn(
+                  "absolute top-4 right-4 gap-2 h-10 px-4 rounded-full transition-colors z-10",
+                  show3D 
+                    ? "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700 border-0" 
+                    : "bg-background/90 hover:bg-background text-foreground shadow-md dark:bg-background/80 border border-gray-300 dark:border-white"
+                )}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <span className="text-sm font-medium">{show3D ? "Show in 2D" : "Show in 3D"}</span>
+              </Button>
             )}
           </div>
           <div className="grid grid-cols-4 gap-4">
@@ -329,33 +359,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             </div>
           )}
 
-          {/* 3D AR Model Preview */}
-          {product.generatedAssets?.arModelUrl && (
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-              <div className="p-6 border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-purple-600 text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-lg">3D AR Model Preview</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2 ml-8">
-                  Interactive 3D model - drag to rotate, scroll to zoom
-                </p>
-              </div>
-              <div className="p-6">
-                <GlbViewer
-                  url={product.generatedAssets.arModelUrl}
-                  width="100%"
-                  height={500}
-                />
-              </div>
-            </div>
-          )}
+
 
           {/* Product Video Preview */}
           {product.generatedAssets?.videoUrl && (
@@ -623,6 +627,36 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         <li key={idx} className="text-sm flex items-start gap-2">
                           <span className="text-green-600 mt-0.5">✓</span>
                           <span>{benefit}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Usage Instructions */}
+                {product.generatedAssets.productCopy.usageInstructions && product.generatedAssets.productCopy.usageInstructions.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Usage Instructions</p>
+                    <ul className="space-y-1">
+                      {product.generatedAssets.productCopy.usageInstructions.map((instruction: string, idx: number) => (
+                        <li key={idx} className="text-sm flex items-start gap-2">
+                          <span className="text-blue-600 mt-0.5">{idx + 1}.</span>
+                          <span>{instruction}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Maintenance Instructions */}
+                {product.generatedAssets.productCopy.maintenanceInstructions && product.generatedAssets.productCopy.maintenanceInstructions.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Maintenance Instructions</p>
+                    <ul className="space-y-1">
+                      {product.generatedAssets.productCopy.maintenanceInstructions.map((instruction: string, idx: number) => (
+                        <li key={idx} className="text-sm flex items-start gap-2">
+                          <span className="text-orange-600 mt-0.5">🔧</span>
+                          <span>{instruction}</span>
                         </li>
                       ))}
                     </ul>
