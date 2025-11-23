@@ -24,11 +24,22 @@ data class GenerationRequest(
     val style: String? = null
 )
 
+@kotlinx.serialization.Serializable
+data class JobStep(
+    val id: String,
+    val name: String,
+    var status: String = "PENDING", // PENDING, RUNNING, COMPLETED, ERROR, SKIPPED
+    var startTime: Long? = null,
+    var endTime: Long? = null,
+    var durationMs: Long? = null
+)
+
 data class GenerationJobStatus(
     val jobId: String,
     val productId: String,
     var status: String,
     var progress: Int,
+    var steps: MutableList<JobStep> = mutableListOf(),
     var generatedAssets: ImageData? = null,
     var generated3dAssets: String? = null
 )
@@ -48,9 +59,42 @@ object JobManager {
 
     fun getStatus(jobId: String): GenerationJobStatus? = jobs[jobId]
 
+    fun getStatusByProductId(productId: String): GenerationJobStatus? {
+        return jobs.values.find { it.productId == productId }
+    }
+
+    private fun updateStep(status: GenerationJobStatus, stepId: String, stepStatus: String) {
+        synchronized(status) {
+            val step = status.steps.find { it.id == stepId }
+            if (step != null) {
+                step.status = stepStatus
+                if (stepStatus == "RUNNING") {
+                    step.startTime = System.currentTimeMillis()
+                } else if (stepStatus == "COMPLETED" || stepStatus == "ERROR") {
+                    step.endTime = System.currentTimeMillis()
+                    if (step.startTime != null) {
+                        step.durationMs = step.endTime!! - step.startTime!!
+                    }
+                }
+            }
+        }
+    }
+
     fun enqueueAssetsGeneration(productId: String, req: GenerationRequest): String {
         val jobId = UUID.randomUUID().toString()
-        val status = GenerationJobStatus(jobId, productId, status = "QUEUED", progress = 0)
+        
+        // Define initial steps
+        val steps = mutableListOf(
+            JobStep("init", "Initializing", "PENDING"),
+            JobStep("images", "Generating Images", "PENDING"),
+            JobStep("model", "Generating 3D Model", "PENDING"),
+            JobStep("copy", "Writing Marketing Copy", "PENDING"),
+            JobStep("shopify", "Syncing to Shopify", "PENDING"),
+            JobStep("video", "Generating Video", "PENDING"),
+            JobStep("infographic", "Generating Infographic", "PENDING")
+        )
+
+        val status = GenerationJobStatus(jobId, productId, status = "QUEUED", progress = 0, steps = steps)
         jobs[jobId] = status
 
         val job = scope.launch {
@@ -58,6 +102,9 @@ object JobManager {
                 println("[JOB_PROCESSING] Starting job $jobId for product $productId")
                 status.status = "RUNNING"
                 status.progress = 5
+                updateStep(status, "init", "RUNNING")
+                delay(500)
+                updateStep(status, "init", "COMPLETED")
 
                 var product = productRepo.findById(productId) ?: run {
                     println("[JOB_PROCESSING] Product $productId not found")
@@ -72,6 +119,7 @@ object JobManager {
                 val imageDeferred = async {
                     if ("hero" in req.assetTypes || "lifestyle" in req.assetTypes || "detail" in req.assetTypes) {
                         println("[JOB_PROCESSING] Generating images for product $productId (types: ${req.assetTypes})")
+                        updateStep(status, "images", "RUNNING")
                         val heroCount = req.count["hero"] ?: 5
                         val baseImage = product.originalImages.firstOrNull()
                         if (baseImage != null) {
@@ -79,9 +127,11 @@ object JobManager {
                             val brandGuidelines = settings?.brandGuidelines
                             val images = fal.generateProductImages(productId, baseImage, type = "hero", count = heroCount, brandGuidelines = brandGuidelines)
                             synchronized(status) { status.progress += 35 }
+                            updateStep(status, "images", "COMPLETED")
                             images
                         } else {
                             println("[JOB_PROCESSING] No base image found for product $productId")
+                            updateStep(status, "images", "ERROR")
                             null
                         }
                     } else {
@@ -91,6 +141,7 @@ object JobManager {
 
                 val modelDeferred = scope.async {
                     println("[JOB_PROCESSING] Generating 3D model for product $productId")
+                    updateStep(status, "model", "RUNNING")
                     val baseImage = product.originalImages.firstOrNull()
                     if (baseImage != null) {
                         try {
@@ -107,10 +158,12 @@ object JobManager {
                             val s3Url = storage.uploadFile(fileName, bytes, "model/gltf-binary")
                             println("[JOB_PROCESSING] GLB uploaded to: $s3Url")
                             synchronized(status) { status.progress += 30 }
+                            updateStep(status, "model", "COMPLETED")
                             s3Url
                         } catch (e: Exception) {
                             println("[JOB_PROCESSING] Failed to generate/upload 3D model: ${e.message}")
                             e.printStackTrace()
+                            updateStep(status, "model", "ERROR")
                             null
                         }
                     } else {
@@ -121,6 +174,7 @@ object JobManager {
                 val copyDeferred = async {
                     // Generate marketing copy using Anthropic Claude
                     println("[JOB_PROCESSING] Generating marketing copy for product $productId using Anthropic Claude")
+                    updateStep(status, "copy", "RUNNING")
                     var productCopy: com.productkit.models.ProductCopy? = null
                     try {
                         println("[JOB_PROCESSING] Sending prompt to Anthropic for marketing copy generation")
@@ -213,6 +267,7 @@ object JobManager {
                         println("[JOB_PROCESSING]   Benefits: ${productCopy.benefits}")
                     }
                     synchronized(status) { status.progress += 15 }
+                    updateStep(status, "copy", "COMPLETED")
                     productCopy
                 }
 
@@ -246,6 +301,7 @@ object JobManager {
 
                      val user = userRepo.findById(product.userId)
                      if (user?.shopifyStoreUrl != null && user.shopifyAccessToken != null) {
+                         updateStep(status, "shopify", "RUNNING")
                          val shopifyResult = shopify.createProduct(product, generatedAssets, user.shopifyStoreUrl, user.shopifyAccessToken)
                          if (shopifyResult != null) {
                              shopifyId = shopifyResult.id
@@ -265,10 +321,12 @@ object JobManager {
                              } else {
                                  println("[SHOPIFY] Failed to add media to product")
                              }
-                         }
-                     } else {
-                         println("[SHOPIFY] User ${product.userId} does not have Shopify credentials configured")
-                     }
+                          }
+                          updateStep(status, "shopify", "COMPLETED")
+                      } else {
+                          println("[SHOPIFY] User ${product.userId} does not have Shopify credentials configured")
+                          updateStep(status, "shopify", "SKIPPED")
+                      }
                 }
 
                 // Update product with generated assets and completed status
@@ -303,6 +361,7 @@ object JobManager {
                         // Launch video generation in parallel
                         val videoDeferred = async {
                             println("[JOB_PROCESSING] Generating product video for product $productId")
+                            updateStep(status, "video", "RUNNING")
                             // Use the first generated hero image as base, or original image if none
                             val baseImage = heroImageUrls.firstOrNull() ?: product.originalImages.firstOrNull()
                             if (baseImage != null) {
@@ -313,9 +372,11 @@ object JobManager {
                                 } catch (e: Exception) {
                                     println("[JOB_PROCESSING] Failed to generate video: ${e.message}")
                                     e.printStackTrace()
+                                    updateStep(status, "video", "ERROR")
                                     null
                                 }
                             } else {
+                                updateStep(status, "video", "SKIPPED")
                                 null
                             }
                         }
@@ -323,6 +384,7 @@ object JobManager {
                         // Launch infographic generation in parallel
                         val infographicDeferred = async {
                             println("[JOB_PROCESSING] Generating product infographic for product $productId")
+                            updateStep(status, "infographic", "RUNNING")
                             // Use the first generated hero image as base, or original image if none
                             val baseImage = heroImageUrls.firstOrNull() ?: product.originalImages.firstOrNull()
                             val currentProductCopy = productCopy ?: com.productkit.models.ProductCopy(
@@ -348,9 +410,11 @@ object JobManager {
                                 } catch (e: Exception) {
                                     println("[JOB_PROCESSING] Failed to generate infographic: ${e.message}")
                                     e.printStackTrace()
+                                    updateStep(status, "infographic", "ERROR")
                                     null
                                 }
                             } else {
+                                updateStep(status, "infographic", "SKIPPED")
                                 null
                             }
                         }
@@ -359,6 +423,9 @@ object JobManager {
                         val assets3d = modelDeferred.await()
                         val videoUrl = videoDeferred.await()
                         val infographicUrl = infographicDeferred.await()
+                        
+                        if (videoUrl != null) updateStep(status, "video", "COMPLETED")
+                        if (infographicUrl != null) updateStep(status, "infographic", "COMPLETED")
                         
                         if (assets3d != null || videoUrl != null || infographicUrl != null) {
                             // Update product with new assets

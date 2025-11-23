@@ -2,11 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 
+export interface JobStep {
+    id: string;
+    name: string;
+    status: "PENDING" | "RUNNING" | "COMPLETED" | "ERROR" | "SKIPPED";
+    startTime?: number;
+    endTime?: number;
+    durationMs?: number;
+}
+
 interface StatusUpdate {
     type: string;
     status: string;
     progress: number;
     message: string;
+    steps?: JobStep[];
 }
 
 export function useProductStatus(productId: string, enabled: boolean = true) {
