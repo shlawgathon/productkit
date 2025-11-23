@@ -59,12 +59,6 @@ class ApiClient {
         try {
             response = await fetch(url, { ...options, headers });
         } catch (error) {
-            // Check for bypass cookie
-            if (typeof document !== 'undefined' && document.cookie.includes('auth-token=dev-bypass-token')) {
-                console.log(`[API] Network error but bypass cookie found. Returning mock data for ${endpoint}`);
-                return this.getMockData(endpoint);
-            }
-
             // Network error (server not running, no internet, etc.)
             console.warn(`[API] Network error - server may be offline:`, error);
             throw new Error('Unable to connect to server. Please check if the backend is running.');
@@ -255,59 +249,6 @@ class ApiClient {
         }
 
         return response.json();
-    }
-
-    private getMockData(endpoint: string): any {
-        if (endpoint === '/api/products') {
-            return {
-                products: [
-                    {
-                        _id: 'mock-1',
-                        name: 'Mock Product 1',
-                        status: 'COMPLETED',
-                        updatedAt: new Date().toISOString(),
-                        originalImages: ['https://placehold.co/600x400'],
-                        shopifyStorefrontUrl: 'https://example.com'
-                    },
-                    {
-                        _id: 'mock-2',
-                        name: 'Mock Product 2',
-                        status: 'DRAFT',
-                        updatedAt: new Date().toISOString(),
-                        originalImages: ['https://placehold.co/600x400']
-                    },
-                    {
-                        _id: 'mock-3',
-                        name: 'Mock Product 3',
-                        status: 'GENERATING',
-                        updatedAt: new Date().toISOString(),
-                        originalImages: ['https://placehold.co/600x400']
-                    }
-                ]
-            };
-        }
-        if (endpoint === '/api/auth/me') {
-             return {
-                _id: 'dev-user',
-                email: 'dev@example.com',
-                firstName: 'Dev',
-                lastName: 'User',
-                bio: 'Mock user for offline development',
-                shopifyStoreUrl: 'mock-store.myshopify.com'
-            };
-        }
-        if (endpoint === '/api/settings') {
-            return {
-                brandGuidelines: {
-                    primaryColor: "#000000",
-                    secondaryColor: "#ffffff",
-                    fontFamily: "Inter",
-                    tone: "Professional"
-                }
-            };
-        }
-        // Default empty
-        return {};
     }
 }
 

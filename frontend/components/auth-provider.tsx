@@ -34,7 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const initAuth = async () => {
             const token = localStorage.getItem('accessToken');
-            const hasBypassCookie = document.cookie.includes('auth-token=dev-bypass-token');
 
             if (token) {
                 try {
@@ -46,36 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 } catch (error) {
                     console.error("Auth check failed", error);
                     
-                    if (hasBypassCookie) {
-                        console.log("Auth failed but bypass cookie found, using mock user");
-                        setUser({
-                            _id: 'dev-user',
-                            email: 'dev@example.com',
-                            firstName: 'Dev',
-                            lastName: 'User'
-                        });
-                        setIsLoading(false);
-                        return;
-                    }
-
                     api.clearTokens();
                     setUser(null);
                     localStorage.removeItem('user');
                     if (pathname !== '/login' && pathname !== '/register') {
                         router.push('/login');
                     }
-                }
-            } else if (hasBypassCookie) {
-                // Don't auto-login on public auth pages if we only have the bypass cookie
-                // This allows testing the login flow
-                if (pathname !== '/login' && pathname !== '/register') {
-                    console.log("No token but bypass cookie found, using mock user");
-                    setUser({
-                        _id: 'dev-user',
-                        email: 'dev@example.com',
-                        firstName: 'Dev',
-                        lastName: 'User'
-                    });
                 }
             }
             setIsLoading(false);
@@ -92,20 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('user', JSON.stringify(response.user));
             router.push('/dashboard');
         } catch (error) {
-            const hasBypassCookie = document.cookie.includes('auth-token=dev-bypass-token');
-            if (hasBypassCookie) {
-                console.log("Login failed but bypass cookie found, using mock user");
-                const mockUser = {
-                    _id: 'dev-user',
-                    email: credentials.username || 'dev@example.com',
-                    firstName: 'Dev',
-                    lastName: 'User'
-                };
-                setUser(mockUser);
-                localStorage.setItem('user', JSON.stringify(mockUser));
-                router.push('/dashboard');
-                return;
-            }
             throw error;
         }
     };
@@ -118,20 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('user', JSON.stringify(response.user));
             router.push('/onboarding');
         } catch (error) {
-            const hasBypassCookie = document.cookie.includes('auth-token=dev-bypass-token');
-            if (hasBypassCookie) {
-                console.log("Registration failed but bypass cookie found, using mock user");
-                const mockUser = {
-                    _id: 'dev-user',
-                    email: credentials.email || 'dev@example.com',
-                    firstName: 'Dev',
-                    lastName: 'User'
-                };
-                setUser(mockUser);
-                localStorage.setItem('user', JSON.stringify(mockUser));
-                router.push('/onboarding');
-                return;
-            }
             throw error;
         }
     };
