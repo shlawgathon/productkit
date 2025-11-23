@@ -156,6 +156,12 @@ object JobManager {
                             } ?: emptyList(),
                             benefits = copyData["benefits"]?.let {
                                 kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
+                            } ?: emptyList(),
+                            usageInstructions = copyData["usageInstructions"]?.let {
+                                kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
+                            } ?: emptyList(),
+                            maintenanceInstructions = copyData["maintenanceInstructions"]?.let {
+                                kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
                             } ?: emptyList()
                         )
 
@@ -197,7 +203,9 @@ object JobManager {
                             subheadline = "Premium quality meets exceptional design",
                             description = product.description ?: "Experience the perfect blend of style, quality, and functionality with ${product.name}.",
                             features = fallbackFeatures.take(4),
-                            benefits = fallbackBenefits.take(4)
+                            benefits = fallbackBenefits.take(4),
+                            usageInstructions = listOf("Follow included instructions", "Use as intended", "Keep in good condition"),
+                            maintenanceInstructions = listOf("Clean regularly", "Store properly", "Handle with care")
                         )
 
                         println("[JOB_PROCESSING] Using fallback marketing copy:")
@@ -221,7 +229,7 @@ object JobManager {
                     lifestyleImages = existingAssets?.lifestyleImages ?: emptyList(),
                     detailImages = existingAssets?.detailImages ?: emptyList(),
                     product360Views = existingAssets?.product360Views ?: emptyList(),
-                    productCopy = productCopy ?: (existingAssets?.productCopy ?: com.productkit.models.ProductCopy("", "", "", emptyList(), emptyList())),
+                    productCopy = productCopy ?: (existingAssets?.productCopy ?: com.productkit.models.ProductCopy("", "", "", emptyList(), emptyList(), emptyList(), emptyList())),
                     technicalSpecs = existingAssets?.technicalSpecs ?: emptyMap(),
                     siteUrl = existingAssets?.siteUrl,
                     arModelUrl = existingAssets?.arModelUrl // Keep existing 3D model if any
@@ -322,7 +330,9 @@ object JobManager {
                                 subheadline = "",
                                 description = "",
                                 features = emptyList(),
-                                benefits = emptyList()
+                                benefits = emptyList(),
+                                usageInstructions = emptyList(),
+                                maintenanceInstructions = emptyList()
                             )
                             
                             if (baseImage != null) {

@@ -243,11 +243,15 @@ class AnthropicService(
             3. description: A persuasive product description highlighting what makes it special (2-3 sentences, max 300 characters)
             4. features: An array of 3-5 specific, tangible product features (e.g., "Premium Leather Construction", "Wireless Charging Compatible", "Water-Resistant Design"). Each feature should be concrete and descriptive (max 50 characters each)
             5. benefits: An array of 3-5 customer-focused benefits that explain the value (e.g., "Lasts for Years", "Saves You Time", "Enhances Your Lifestyle"). Focus on outcomes and emotional value (max 50 characters each)
+            6. usageInstructions: An array of 3-5 brief, actionable usage instructions appropriate for this product type (e.g., for clothing: "Machine wash cold", for electronics: "Charge for 2 hours before first use"). Be specific and practical (max 60 characters each)
+            7. maintenanceInstructions: An array of 3-5 brief maintenance or care tips to keep the product in good condition (e.g., "Store in cool, dry place", "Clean with soft cloth", "Avoid direct sunlight"). Be specific to the product type (max 60 characters each)
             
             Important: 
             - Features describe WHAT the product has (specifications, materials, capabilities)
             - Benefits describe WHY it matters to the customer (value, outcomes, feelings)
-            - Make features and benefits specific to this product, not generic
+            - Usage instructions should be practical steps for using the product
+            - Maintenance instructions should be care/preservation tips
+            - Make all content specific to this product, not generic
             - Use professional, persuasive language
             
             Return ONLY a valid JSON object with these exact keys, no extra text or markdown formatting.

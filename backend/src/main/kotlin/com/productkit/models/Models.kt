@@ -62,7 +62,9 @@ data class ProductCopy(
     val subheadline: String,
     val description: String,
     val features: List<String>,
-    val benefits: List<String>
+    val benefits: List<String>,
+    val usageInstructions: List<String> = emptyList(),
+    val maintenanceInstructions: List<String> = emptyList()
 )
 
 data class UserSettings(
