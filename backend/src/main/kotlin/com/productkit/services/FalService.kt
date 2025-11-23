@@ -22,7 +22,6 @@ class FalService(
         private const val TEXT_LLM = "fal-ai/llama-3-70b-instruct"
     }
 
-
     // Helper to understand image content using bagel/understand model
     private suspend fun understandImage(imageUrl: String): String {
         val input = mapOf(
@@ -35,7 +34,7 @@ class FalService(
             options = RunOptions()
         )
         val jsonStr = result.data.toString()
-        val regex = Regex("\\\"text\\\":\\\"([^\\\"]+)\\\"")
+        val regex = Regex("\"text\":\"([^\"]+)\"")
         val match = regex.find(jsonStr)
         return match?.groupValues?.get(1) ?: ""
     }
@@ -50,7 +49,7 @@ class FalService(
             options = RunOptions()
         )
         val text = result.data.toString()
-        val regex = Regex("\\\"text\\\":\\\"([^\\\"]+)\\\"")
+        val regex = Regex("\"text\":\"(\"+)\"")
         val match = regex.find(text)
         val generated = match?.groupValues?.get(1) ?: ""
         return generated.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
@@ -73,11 +72,14 @@ class FalService(
     ): ImageData {
         // Dynamically generate prompts based on the image content
         // First, understand the image using the bagel/understand model
+        /*println("UNDERSTANDING IMG")
         val understoodDescription = understandImage(baseImage)
+        println("[UNDERSTOOD] $understoodDescription")
         // Then, generate marketing prompts using a Llama 3 model
         val generatedPrompts = generatePromptsFromDescription(understoodDescription)
+        println("[PROMPTS] $generatedPrompts")*/
         // Ensure we have at least some prompts; fallback to default if needed
-        val prompts = if (generatedPrompts.isNotEmpty()) generatedPrompts else listOf(
+        val prompts = /*if (generatedPrompts.isNotEmpty()) generatedPrompts else */listOf(
             "Professional studio product photography with clean white background, perfect lighting, high resolution, commercial quality",
             "Lifestyle product photo in modern minimalist setting, natural lighting, elegant composition, lifestyle magazine style",
             "Close-up product detail shot highlighting texture and quality, macro photography, sharp focus, premium look",
