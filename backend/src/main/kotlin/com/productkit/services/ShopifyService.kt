@@ -59,7 +59,7 @@ class ShopifyService {
                 }
             }
 
-            // Build GraphQL mutation for product creation
+            // Build GraphQL mutation for product creation and publish to Online Store
             val mutation = """
                 mutation {
                   productCreate(product: {
@@ -84,8 +84,8 @@ class ShopifyService {
                 }
             """.trimIndent()
 
-            val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
-            
+            val apiUrl = "https://${shopDomain}/admin/api/2024-10/graphql.json"
+
             val response: HttpResponse = client.post(apiUrl) {
                 contentType(ContentType.Application.Json)
                 header("X-Shopify-Access-Token", accessToken)
@@ -117,8 +117,40 @@ class ShopifyService {
 
             val productId = productData["id"]?.jsonPrimitive?.content ?: return null
             val handle = productData["handle"]?.jsonPrimitive?.content ?: ""
+
+            // Now publish the product to the Online Store
+            val publishMutation = """
+                mutation {
+                  publishablePublish(
+                    id: "$productId",
+                    input: [{
+                      publicationId: "gid://shopify/Publication/1"
+                    }]
+                  ) {
+                    publishable {
+                      availablePublicationsCount {
+                        count
+                      }
+                    }
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+            """.trimIndent()
+
+            val publishResponse: HttpResponse = client.post(apiUrl) {
+                contentType(ContentType.Application.Json)
+                header("X-Shopify-Access-Token", accessToken)
+                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(publishMutation)))
+            }
+
+            val publishResponseBody = publishResponse.bodyAsText()
+            println("[SHOPIFY] Publish Response: $publishResponseBody")
+
             val id = productId.removePrefix("gid://shopify/Product/")
-            println("[SHOPIFY] Product created successfully: $productId ()")
+            println("[SHOPIFY] Product created successfully: $productId")
 
             return ShopifyProductResult(
                 id = productId,
