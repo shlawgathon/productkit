@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -63,143 +64,152 @@ object JobManager {
                     status.status = "ERROR"; return@launch
                 }
 
-                // Update to PROCESSING status
-                product = product.copy(status = ProductStatus.PROCESSING, updatedAt = System.currentTimeMillis())
+                // Update to GENERATING_IMAGES status (as a general "generating assets" status)
+                product = product.copy(status = ProductStatus.GENERATING_IMAGES, updatedAt = System.currentTimeMillis())
                 productRepo.update(product)
 
-                var imageData: ImageData? = null
-                if ("hero" in req.assetTypes || "lifestyle" in req.assetTypes || "detail" in req.assetTypes) {
-                    // Update to GENERATING_IMAGES status
-                    product = product.copy(status = ProductStatus.GENERATING_IMAGES, updatedAt = System.currentTimeMillis())
-                    productRepo.update(product)
+                // Launch parallel tasks
+                val imageDeferred = async {
+                    if ("hero" in req.assetTypes || "lifestyle" in req.assetTypes || "detail" in req.assetTypes) {
+                        println("[JOB_PROCESSING] Generating images for product $productId (types: ${req.assetTypes})")
+                        val heroCount = req.count["hero"] ?: 5
+                        val baseImage = product.originalImages.firstOrNull()
+                        if (baseImage != null) {
+                            val images = fal.generateProductImages(productId, baseImage, type = "hero", count = heroCount)
+                            synchronized(status) { status.progress += 35 }
+                            images
+                        } else {
+                            println("[JOB_PROCESSING] No base image found for product $productId")
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                }
 
-                    println("[JOB_PROCESSING] Generating images for product $productId (types: ${req.assetTypes})")
-                    val heroCount = req.count["hero"] ?: 5
+                val modelDeferred = async {
+                    println("[JOB_PROCESSING] Generating 3D model for product $productId")
                     val baseImage = product.originalImages.firstOrNull()
                     if (baseImage != null) {
-                        val images = fal.generateProductImages(productId, baseImage, type = "hero", count = heroCount)
-                        imageData = images
+                        try {
+                            val modelUrl = fal.generate3DModelGLB(baseImage)
+                            println("[JOB_PROCESSING] GLB generated at: $modelUrl")
+
+                            // Download the file
+                            val url = java.net.URL(modelUrl)
+                            val bytes = url.readBytes()
+                            val fileName = "product-$productId-model.glb"
+
+                            // Upload to S3
+                            println("[JOB_PROCESSING] Uploading GLB to storage...")
+                            val s3Url = storage.uploadFile(fileName, bytes, "model/gltf-binary")
+                            println("[JOB_PROCESSING] GLB uploaded to: $s3Url")
+                            synchronized(status) { status.progress += 30 }
+                            s3Url
+                        } catch (e: Exception) {
+                            println("[JOB_PROCESSING] Failed to generate/upload 3D model: ${e.message}")
+                            e.printStackTrace()
+                            null
+                        }
                     } else {
-                        println("[JOB_PROCESSING] No base image found for product $productId")
+                        null
                     }
-                    status.progress = 40
                 }
 
-                var assets3d: String? = null
-                println("[JOB_PROCESSING] Generating 3D model for product $productId")
-                val baseImage = product.originalImages.firstOrNull()
-                if (baseImage != null) {
+                val copyDeferred = async {
+                    // Generate marketing copy using Anthropic Claude
+                    println("[JOB_PROCESSING] Generating marketing copy for product $productId using Anthropic Claude")
+                    var productCopy: com.productkit.models.ProductCopy? = null
                     try {
-                        val modelUrl = fal.generate3DModelGLB(baseImage)
-                        println("[JOB_PROCESSING] GLB generated at: $modelUrl")
+                        println("[JOB_PROCESSING] Sending prompt to Anthropic for marketing copy generation")
+                        val response = anthropic.generateMarketingCopy(
+                            productName = product.name,
+                            productDescription = product.description,
+                            pdfGuidesCount = product.pdfGuides.size
+                        )
 
-                        // Download the file
-                        val url = java.net.URL(modelUrl)
-                        val bytes = url.readBytes()
-                        val fileName = "product-$productId-model.glb"
+                        var jsonString = response
+                            .replace("```json", "")
+                            .replace("```", "")
+                            .trim()
 
-                        // Upload to S3
-                        println("[JOB_PROCESSING] Uploading GLB to storage...")
-                        val s3Url = storage.uploadFile(fileName, bytes, "model/gltf-binary")
-                        assets3d = s3Url
-                        println("[JOB_PROCESSING] GLB uploaded to: $assets3d")
+                        println("[JOB_PROCESSING] Raw AI response: $jsonString")
+
+                        // Try to extract just the JSON object if there's extra text
+                        val jsonMatch = Regex("""\{[\s\S]*?\}""").find(jsonString)
+                        if (jsonMatch != null) {
+                            jsonString = jsonMatch.value
+                            println("[JOB_PROCESSING] Extracted JSON: $jsonString")
+                        }
+
+                        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                        val copyData = json.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(jsonString)
+
+                        productCopy = com.productkit.models.ProductCopy(
+                            headline = copyData["headline"]?.toString()?.trim('"') ?: "",
+                            subheadline = copyData["subheadline"]?.toString()?.trim('"') ?: "",
+                            description = copyData["description"]?.toString()?.trim('"') ?: "",
+                            features = copyData["features"]?.let {
+                                kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
+                            } ?: emptyList(),
+                            benefits = copyData["benefits"]?.let {
+                                kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
+                            } ?: emptyList()
+                        )
+
+                        println("[JOB_PROCESSING] Successfully generated marketing copy:")
+                        println("[JOB_PROCESSING]   Headline: ${productCopy.headline}")
+                        println("[JOB_PROCESSING]   Features: ${productCopy.features}")
+                        println("[JOB_PROCESSING]   Benefits: ${productCopy.benefits}")
                     } catch (e: Exception) {
-                        println("[JOB_PROCESSING] Failed to generate/upload 3D model: ${e.message}")
+                        println("[JOB_PROCESSING] Failed to generate marketing copy: ${e.message}")
                         e.printStackTrace()
+
+                        // Generate more contextual fallback copy based on product details
+                        val productWords = product.name.split(" ").filter { it.length > 3 }
+                        val descWords = product.description?.split(" ")?.filter { it.length > 4 }?.take(3) ?: emptyList()
+
+                        val fallbackFeatures = mutableListOf<String>()
+                        val fallbackBenefits = mutableListOf<String>()
+
+                        // Generate contextual features
+                        if (productWords.isNotEmpty()) {
+                            fallbackFeatures.add("Premium ${productWords.firstOrNull() ?: "Quality"} Design")
+                        }
+                        fallbackFeatures.addAll(listOf(
+                            "Durable Construction",
+                            "Modern Aesthetic",
+                            "Expert Craftsmanship"
+                        ))
+
+                        // Generate contextual benefits
+                        fallbackBenefits.addAll(listOf(
+                            "Built to Last",
+                            "Exceptional Value",
+                            "Customer Favorite",
+                            "Trusted Quality"
+                        ))
+
+                        productCopy = com.productkit.models.ProductCopy(
+                            headline = "Discover ${product.name}",
+                            subheadline = "Premium quality meets exceptional design",
+                            description = product.description ?: "Experience the perfect blend of style, quality, and functionality with ${product.name}.",
+                            features = fallbackFeatures.take(4),
+                            benefits = fallbackBenefits.take(4)
+                        )
+
+                        println("[JOB_PROCESSING] Using fallback marketing copy:")
+                        println("[JOB_PROCESSING]   Features: ${productCopy.features}")
+                        println("[JOB_PROCESSING]   Benefits: ${productCopy.benefits}")
                     }
+                    synchronized(status) { status.progress += 15 }
+                    productCopy
                 }
-                status.progress = 70
 
-                // Update to GENERATING_COPY status
-                product = product.copy(status = ProductStatus.GENERATING_COPY, updatedAt = System.currentTimeMillis())
-                productRepo.update(product)
-
-                // Generate marketing copy using Anthropic Claude
-                println("[JOB_PROCESSING] Generating marketing copy for product $productId using Anthropic Claude")
-                var productCopy: com.productkit.models.ProductCopy? = null
-                try {
-                    println("[JOB_PROCESSING] Sending prompt to Anthropic for marketing copy generation")
-                    val response = anthropic.generateMarketingCopy(
-                        productName = product.name,
-                        productDescription = product.description,
-                        pdfGuidesCount = product.pdfGuides.size
-                    )
-
-                    var jsonString = response
-                        .replace("```json", "")
-                        .replace("```", "")
-                        .trim()
-
-                    println("[JOB_PROCESSING] Raw AI response: $jsonString")
-
-                    // Try to extract just the JSON object if there's extra text
-                    val jsonMatch = Regex("""\{[\s\S]*?\}""").find(jsonString)
-                    if (jsonMatch != null) {
-                        jsonString = jsonMatch.value
-                        println("[JOB_PROCESSING] Extracted JSON: $jsonString")
-                    }
-
-                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                    val copyData = json.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(jsonString)
-
-                    productCopy = com.productkit.models.ProductCopy(
-                        headline = copyData["headline"]?.toString()?.trim('"') ?: "",
-                        subheadline = copyData["subheadline"]?.toString()?.trim('"') ?: "",
-                        description = copyData["description"]?.toString()?.trim('"') ?: "",
-                        features = copyData["features"]?.let {
-                            kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
-                        } ?: emptyList(),
-                        benefits = copyData["benefits"]?.let {
-                            kotlinx.serialization.json.Json.decodeFromJsonElement<List<String>>(it)
-                        } ?: emptyList()
-                    )
-
-                    println("[JOB_PROCESSING] Successfully generated marketing copy:")
-                    println("[JOB_PROCESSING]   Headline: ${productCopy.headline}")
-                    println("[JOB_PROCESSING]   Features: ${productCopy.features}")
-                    println("[JOB_PROCESSING]   Benefits: ${productCopy.benefits}")
-                } catch (e: Exception) {
-                    println("[JOB_PROCESSING] Failed to generate marketing copy: ${e.message}")
-                    e.printStackTrace()
-
-                    // Generate more contextual fallback copy based on product details
-                    val productWords = product.name.split(" ").filter { it.length > 3 }
-                    val descWords = product.description?.split(" ")?.filter { it.length > 4 }?.take(3) ?: emptyList()
-
-                    val fallbackFeatures = mutableListOf<String>()
-                    val fallbackBenefits = mutableListOf<String>()
-
-                    // Generate contextual features
-                    if (productWords.isNotEmpty()) {
-                        fallbackFeatures.add("Premium ${productWords.firstOrNull() ?: "Quality"} Design")
-                    }
-                    fallbackFeatures.addAll(listOf(
-                        "Durable Construction",
-                        "Modern Aesthetic",
-                        "Expert Craftsmanship"
-                    ))
-
-                    // Generate contextual benefits
-                    fallbackBenefits.addAll(listOf(
-                        "Built to Last",
-                        "Exceptional Value",
-                        "Customer Favorite",
-                        "Trusted Quality"
-                    ))
-
-                    productCopy = com.productkit.models.ProductCopy(
-                        headline = "Discover ${product.name}",
-                        subheadline = "Premium quality meets exceptional design",
-                        description = product.description ?: "Experience the perfect blend of style, quality, and functionality with ${product.name}.",
-                        features = fallbackFeatures.take(4),
-                        benefits = fallbackBenefits.take(4)
-                    )
-
-                    println("[JOB_PROCESSING] Using fallback marketing copy:")
-                    println("[JOB_PROCESSING]   Features: ${productCopy.features}")
-                    println("[JOB_PROCESSING]   Benefits: ${productCopy.benefits}")
-                }
-                status.progress = 85
+                // Await all results
+                val imageData = imageDeferred.await()
+                val assets3d = modelDeferred.await()
+                val productCopy = copyDeferred.await()
 
                 // Build GeneratedAssets from the generated data
                 val existingAssets = product.generatedAssets
