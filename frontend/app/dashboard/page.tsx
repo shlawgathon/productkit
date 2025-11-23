@@ -31,8 +31,29 @@ export default function DashboardPage() {
           shopifyStorefrontUrl: p.shopifyStorefrontUrl,
         }));
         setProducts(mappedProducts);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch products", error);
+        if (error.message?.includes('Unable to connect to server')) {
+            setProducts([
+                {
+                    id: 'mock-1',
+                    name: 'Mock Product 1',
+                    slug: 'mock-product-1',
+                    status: 'active',
+                    thumbnailUrl: 'https://via.placeholder.com/300',
+                    lastModified: new Date().toLocaleDateString(),
+                    shopifyStorefrontUrl: '#'
+                },
+                {
+                    id: 'mock-2',
+                    name: 'Mock Product 2',
+                    slug: 'mock-product-2',
+                    status: 'draft',
+                    thumbnailUrl: 'https://via.placeholder.com/300',
+                    lastModified: new Date().toLocaleDateString(),
+                }
+            ]);
+        }
       } finally {
         setIsLoading(false);
       }

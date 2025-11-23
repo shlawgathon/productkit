@@ -41,7 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const userData = await api.getUser();
                     setUser(userData);
                     localStorage.setItem('user', JSON.stringify(userData));
-                } catch (error) {
+                } catch (error: any) {
+                    // If server is down, use mock user to allow UI development
+                    if (error.message?.includes('Unable to connect to server')) {
+                        console.warn('Server is down, using mock user');
+                        setUser({
+                            _id: 'mock-user',
+                            email: 'mock@example.com',
+                            firstName: 'Mock',
+                            lastName: 'User'
+                        });
+                        setIsLoading(false);
+                        return;
+                    }
+
                     console.error("Auth check failed", error);
                     api.clearTokens();
                     setUser(null);

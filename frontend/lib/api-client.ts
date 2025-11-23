@@ -14,15 +14,6 @@ class ApiClient {
         if (typeof window !== 'undefined') {
             this.accessToken = localStorage.getItem('accessToken');
             this.refreshToken = localStorage.getItem('refreshToken');
-
-            // If no token in localStorage, try to get from cookie
-            if (!this.accessToken) {
-                const cookies = document.cookie.split(';');
-                const authCookie = cookies.find(c => c.trim().startsWith('auth-token='));
-                if (authCookie) {
-                    this.accessToken = authCookie.split('=')[1];
-                }
-            }
         }
     }
 
@@ -39,12 +30,6 @@ class ApiClient {
         if (typeof window !== 'undefined') {
             localStorage.setItem('accessToken', accessToken);
             localStorage.setItem('refreshToken', refreshToken);
-
-            // Also set cookie for middleware to read
-            // Set cookie with 7 day expiration
-            const expirationDate = new Date();
-            expirationDate.setDate(expirationDate.getDate() + 7);
-            document.cookie = `auth-token=${accessToken}; path=/; expires=${expirationDate.toUTCString()}; SameSite=Lax`;
         }
     }
 
@@ -54,9 +39,6 @@ class ApiClient {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
-
-            // Also clear the cookie
-            document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         }
     }
 
@@ -263,11 +245,6 @@ class ApiClient {
         }
 
         return response.json();
-    }
-
-    // Reviews
-    public async getReviews(productId: string) {
-        return this.request<any>(`/api/reviews?productId=${productId}`);
     }
 }
 
