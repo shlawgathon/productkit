@@ -3,6 +3,7 @@ import { Instrument_Sans, Funnel_Display } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { NotificationProvider } from "@/components/notification-provider";
+import { SidebarProvider } from "@/components/layout/sidebar-context";
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-instrument-sans",
@@ -31,7 +32,9 @@ export default function RootLayout({
       <body className={`${instrumentSans.variable} ${funnelDisplay.variable} antialiased`}>
         <AuthProvider>
           <NotificationProvider>
-            {children}
+            <SidebarProvider>
+              {children}
+            </SidebarProvider>
           </NotificationProvider>
         </AuthProvider>
       </body>

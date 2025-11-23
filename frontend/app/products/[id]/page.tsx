@@ -68,15 +68,28 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const downloadSelected = async () => {
     const urls = Array.from(selectedImages);
     for (const url of urls) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = url.split('/').pop() || 'download';
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      // Small delay between downloads
-      await new Promise(resolve => setTimeout(resolve, 100));
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        // Extract filename from URL or generate a default one
+        const filename = url.split('/').pop()?.split('?')[0] || `image-${Date.now()}.jpg`;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(blobUrl);
+        
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error("Failed to download image:", url, error);
+      }
     }
   };
 

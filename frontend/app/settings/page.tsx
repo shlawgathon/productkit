@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { User, Save, Palette, Store } from "lucide-react";
+import { User, Save, Palette, Store, HelpCircle } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
@@ -89,10 +90,18 @@ export default function SettingsPage() {
             Manage your account settings and brand preferences.
           </p>
         </div>
-        <Button className="gap-2" onClick={handleSave} disabled={isLoading}>
-          <Save className="h-4 w-4" />
-          {isLoading ? "Saving..." : "Save Changes"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" className="gap-2" asChild>
+            <Link href="/help">
+              <HelpCircle className="h-4 w-4" />
+              Help & Support
+            </Link>
+          </Button>
+          <Button className="gap-2" onClick={handleSave} disabled={isLoading}>
+            <Save className="h-4 w-4" />
+            {isLoading ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-8">

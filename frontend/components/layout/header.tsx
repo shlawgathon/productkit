@@ -1,15 +1,37 @@
 "use client"
 import Link from "next/link";
-import { Menu, User as UserIcon, Settings, LogOut, Upload } from "lucide-react";
+import { Menu, User as UserIcon, Settings, LogOut, Upload, HelpCircle, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api-client";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { NotificationBell } from "@/components/notification-bell";
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 
 export function Header() {
   const { user, logout, updateUser } = useAuth();
+  const isShopifyConnected = !!(user?.shopifyStoreUrl && user?.shopifyAccessToken);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    // Check system preference or local storage
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,8 +56,7 @@ export function Header() {
   const displayName = user?.firstName ? `${user.firstName} ${user.lastName || ''}` : user?.email || 'User';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b backdrop-blur-lg transition-all" style={{
-      backgroundColor: 'rgba(251, 254, 251, 0.7)',
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b backdrop-blur-lg transition-all bg-background/70" style={{
       borderColor: 'var(--border)'
     }}>
       <div className="flex h-full items-center justify-between px-4 md:px-6">
@@ -59,6 +80,28 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/5 border border-border">
+            <ShopifyIcon className="h-4 w-4" />
+            <span className="text-xs font-medium text-muted-foreground">
+              {isShopifyConnected ? "Connected" : "Disconnected"}
+            </span>
+            <div className={`w-2 h-2 rounded-full ${isShopifyConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9 rounded-full"
+          >
+            {theme === 'light' ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+
           <div className="relative group">
             <div className="h-8 w-8 rounded-full ring-2 ring-primary cursor-pointer flex items-center justify-center text-white font-bold text-xs select-none overflow-hidden" style={{
               background: 'linear-gradient(135deg, #BAA5FF 0%, #2C2A4A 100%)'
@@ -116,6 +159,20 @@ export function Header() {
               >
                 <Settings className="h-4 w-4" />
                 Settings
+              </Link>
+              <Link
+                href="/help"
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <HelpCircle className="h-4 w-4" />
+                Help & Support
               </Link>
               <div className="h-px my-1" style={{ backgroundColor: 'var(--border)' }} />
               <button

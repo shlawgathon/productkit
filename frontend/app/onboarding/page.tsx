@@ -232,7 +232,7 @@ function OnboardingContent() {
                       <p className="text-xs text-muted-foreground">PDF guide is optional but recommended – it helps the AI produce richer marketing copy.</p>
                       <Label
                         htmlFor="pdf-upload"
-                        className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-dashed rounded-xl border-muted-foreground/25 hover:bg-muted/50 hover:border-primary/50 cursor-pointer"
+                        className="flex items-center justify-center w-full h-32 px-4 transition bg-transparent border-2 border-dashed rounded-xl border-muted-foreground/25 hover:bg-muted/50 hover:border-primary/50 cursor-pointer"
                       >
                         <div className="flex flex-col items-center space-y-2 text-center">
                           <div className="p-3 rounded-full bg-primary/5 text-primary">
@@ -255,7 +255,7 @@ function OnboardingContent() {
                         {pdfFiles.map((file, index) => (
                           <div key={index} className="flex items-center justify-between p-3 transition-all border rounded-lg bg-card hover:shadow-sm group">
                             <div className="flex items-center gap-3 overflow-hidden">
-                              <div className="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-red-50 text-red-600">
+                              <div className="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-red-500/10 text-red-500">
                                 <FileText className="w-5 h-5" />
                               </div>
                               <div className="flex flex-col min-w-0">
@@ -371,7 +371,7 @@ function OnboardingContent() {
             <div className="sticky top-32 space-y-6">
               <div className="rounded-2xl border bg-muted/30 p-8 backdrop-blur-sm">
                 <h3 className="font-semibold mb-4">Preview</h3>
-                <div className="aspect-3/4 rounded-xl bg-white shadow-sm border overflow-hidden relative group">
+                <div className="aspect-3/4 rounded-xl bg-card shadow-sm border overflow-hidden relative group">
                   <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/60 z-10 flex flex-col justify-end p-6 text-white">
                     <h4 className="text-xl font-bold">{productName || "Product Name"}</h4>
                     <p className="text-sm opacity-80 line-clamp-2">{productDescription || "Product description will appear here..."}</p>
@@ -384,7 +384,7 @@ function OnboardingContent() {
                       className="object-cover h-full w-full transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="h-full w-full bg-gray-100 flex items-center justify-center text-gray-400">
+                    <div className="h-full w-full bg-muted flex items-center justify-center text-muted-foreground/50">
                       <ImageIcon className="h-12 w-12 opacity-20" />
                     </div>
                   )}

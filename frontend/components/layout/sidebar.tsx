@@ -12,9 +12,11 @@ import {
   Users,
   FileText,
   HelpCircle,
-  Palette
+  Palette,
+  ChevronLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSidebar } from "@/components/layout/sidebar-context";
 
 interface NavItem {
   title: string;
@@ -61,21 +63,31 @@ const navSections: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isCollapsed, toggleSidebar } = useSidebar();
 
   return (
     <aside
-      className="fixed left-0 top-16 bottom-0 z-40 hidden w-64 transition-all md:block"
-      style={{ backgroundColor: 'var(--sidebar-background)' }}
+      className={cn(
+        "fixed left-0 top-16 bottom-0 z-40 hidden transition-all duration-300 md:block bg-(--sidebar-background) border-r border-border",
+        isCollapsed ? "w-16" : "w-64"
+      )}
     >
-      <div className="flex h-full flex-col py-6">
+      <div className="relative flex h-full flex-col py-6">
+        {/* Collapse Toggle */}
+        <button
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+        >
+          <ChevronLeft className={cn("h-3 w-3 transition-transform", isCollapsed && "rotate-180")} />
+        </button>
+
         {/* Navigation Sections */}
         <nav className="flex-1 space-y-6 px-3">
           {navSections.map((section, sectionIdx) => (
             <div key={sectionIdx}>
-              {section.title && (
+              {section.title && !isCollapsed && (
                 <div
-                  className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: '#B8B5D1' }}
+                  className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-(--sidebar-section-header)"
                 >
                   {section.title}
                 </div>
@@ -89,30 +101,17 @@ export function Sidebar() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200"
-                      style={
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                         isActive
-                          ? {
-                            backgroundColor: 'var(--sidebar-accent)',
-                            color: '#FBFEFB'
-                          }
-                          : { color: '#B8B5D1' }
-                      }
-                      onMouseEnter={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.backgroundColor = 'var(--sidebar-accent)';
-                          e.currentTarget.style.color = '#FBFEFB';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = '#B8B5D1';
-                        }
-                      }}
+                          ? "bg-(--sidebar-accent) text-(--sidebar-accent-foreground)"
+                          : "text-(--sidebar-section-header) hover:bg-(--sidebar-accent) hover:text-(--sidebar-accent-foreground)",
+                        isCollapsed && "justify-center px-2"
+                      )}
+                      title={isCollapsed ? item.title : undefined}
                     >
-                      <item.icon className="h-4 w-4 flex-shrink-0" />
-                      <span>{item.title}</span>
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {!isCollapsed && <span>{item.title}</span>}
                     </Link>
                   );
                 })}
@@ -120,26 +119,6 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
-
-        {/* Footer Section */}
-        <div className="px-3 pt-4 border-t" style={{ borderColor: 'var(--sidebar-border)' }}>
-          <Link
-            href="/help"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200"
-            style={{ color: '#B8B5D1' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--sidebar-accent)';
-              e.currentTarget.style.color = '#FBFEFB';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#B8B5D1';
-            }}
-          >
-            <HelpCircle className="h-4 w-4" />
-            <span>Help & Support</span>
-          </Link>
-        </div>
       </div>
     </aside>
   );

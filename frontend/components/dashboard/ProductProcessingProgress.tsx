@@ -133,7 +133,7 @@ export function ProductProcessingProgress({
                         </div>
 
                         <div className="grid grid-cols-4 gap-1">
-                            {["Processing", "Images", "Copy", "Shopify"].map((step, i) => {
+                            {["Processing", "Images", "Render", "Shopify"].map((step, i) => {
                                 const stepProgress = (i + 1) * 25;
                                 const isActive = progress >= stepProgress - 25;
                                 const isCompleted = progress >= stepProgress;

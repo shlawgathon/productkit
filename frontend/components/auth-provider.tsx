@@ -12,6 +12,8 @@ interface User {
     lastName?: string;
     profileImage?: string;
     bio?: string;
+    shopifyStoreUrl?: string;
+    shopifyAccessToken?: string;
 }
 
 interface AuthContextType {
