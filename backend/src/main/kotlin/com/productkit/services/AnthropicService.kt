@@ -5,9 +5,14 @@ import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
 import com.anthropic.models.*
 import com.anthropic.models.messages.ContentBlock
+import com.anthropic.models.messages.ContentBlockParam
+import com.anthropic.models.messages.ImageBlockParam
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.MessageParam
 import com.anthropic.models.messages.TextBlockParam
+import com.anthropic.models.messages.UrlImageSource
+import java.net.URL
+import java.util.Base64
 import com.productkit.utils.Config
 import kotlin.jvm.optionals.getOrNull
 
@@ -75,6 +80,60 @@ class AnthropicService(
     }
 
     /**
+     * Understand an image using Claude Vision
+     *
+     * @param imageUrl URL of the image to analyze
+     * @return Description of the image
+     */
+    suspend fun understandImage(imageUrl: String): String {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                // Download image
+                val url = URL(imageUrl)
+                val messageParams = MessageCreateParams.builder()
+                    .model(DEFAULT_MODEL)
+                    .maxTokens(1024)
+                    .messages(
+                        listOf(
+                            MessageParam.builder()
+                                .role(MessageParam.Role.USER)
+                                .content(MessageParam.Content.ofBlockParams(
+                                    listOf(
+                                        ContentBlockParam.ofImage(ImageBlockParam
+                                            .builder()
+                                            .source(UrlImageSource.builder()
+                                                .url(imageUrl)
+                                                .build())
+                                            .build()),
+                                        ContentBlockParam.ofText(TextBlockParam.builder()
+                                            .text("Describe this product image in detail. Focus on visual characteristics, style, material, and setting.")
+                                            .build())
+                                    )
+                                ))
+                                .build()
+                        )
+                    )
+                    .build()
+
+                val message = client.messages().create(messageParams)
+
+                val textContent = message.content().firstOrNull()
+                    ?: throw IllegalStateException("Unexpected response format from Anthropic API")
+
+                if (textContent.isText()) {
+                    textContent.text().getOrNull()?.text() ?: ""
+                } else {
+                    ""
+                }
+            } catch (e: Exception) {
+                println("[AnthropicService] Error understanding image: ${e.message}")
+                e.printStackTrace()
+                "A high quality product image"
+            }
+        }
+    }
+
+    /**
      * Generate marketing prompts from a description
      *
      * @param description The product description
@@ -84,7 +143,14 @@ class AnthropicService(
         if (description.isBlank()) return emptyList()
 
         val prompt = """
-            Based on the following description, generate five concise marketing copy prompts for product images. 
+            Based on the following description, generate five distinct, high-quality AI image generation prompts for this product.
+            The prompts should cover these styles:
+            1. Professional studio photography
+            2. Lifestyle setting
+            3. Close-up detail
+            4. Outdoor/Nature environment
+            5. Creative/Artistic composition
+            
             Return each prompt on a separate line, numbered 1-5.
             
             Description: $description

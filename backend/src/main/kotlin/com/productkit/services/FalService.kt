@@ -5,7 +5,7 @@ import ai.fal.client.kt.*
 import ai.fal.client.queue.QueueStatus
 import com.productkit.models.ImageData
 import com.productkit.utils.Config
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 
 class FalService(
     // Official client will handle FAL_KEY automatically from environment
@@ -18,8 +18,9 @@ class FalService(
     companion object {
         // Seedream v4 edit model endpoint
         private const val IMAGE_EDIT_MODEL = "fal-ai/beta-image-232/edit"
-        private const val IMAGE_UNDERSTAND_MODEL = "fal-ai/bagel/understand"
     }
+    
+    private val anthropicService = AnthropicService()
 
     /**
      * Generate product images using the Seedream v4 edit model
@@ -38,14 +39,15 @@ class FalService(
     ): ImageData {
         // Dynamically generate prompts based on the image content
         // First, understand the image using the bagel/understand model
-        /*println("UNDERSTANDING IMG")
+        println("UNDERSTANDING IMG")
         val understoodDescription = understandImage(baseImage)
         println("[UNDERSTOOD] $understoodDescription")
         // Then, generate marketing prompts using a Llama 3 model
         val generatedPrompts = generatePromptsFromDescription(understoodDescription)
-        println("[PROMPTS] $generatedPrompts")*/
+        println("[PROMPTS] $generatedPrompts")
+        
         // Ensure we have at least some prompts; fallback to default if needed
-        val prompts = /*if (generatedPrompts.isNotEmpty()) generatedPrompts else */listOf(
+        val prompts = if (generatedPrompts.isNotEmpty()) generatedPrompts else listOf(
             "Professional studio product photography with clean white background, perfect lighting, high resolution, commercial quality",
             "Lifestyle product photo in modern minimalist setting, natural lighting, elegant composition, lifestyle magazine style",
             "Close-up product detail shot highlighting texture and quality, macro photography, sharp focus, premium look",
@@ -259,4 +261,14 @@ class FalService(
         val prompt: String,
         val webhookUrl: String? = null
     )
+
+    private suspend fun understandImage(imageUrl: String): String {
+        println("[FalService] Understanding image using Anthropic: $imageUrl")
+        return anthropicService.understandImage(imageUrl)
+    }
+
+    private suspend fun generatePromptsFromDescription(description: String): List<String> {
+        println("[FalService] Generating prompts using Anthropic...")
+        return anthropicService.generatePromptsFromDescription(description)
+    }
 }
