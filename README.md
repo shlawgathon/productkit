@@ -1,7 +1,7 @@
 
 
 
-![logo](Product-Kit_Logo.jpg) #[ProductKit](https://productkit.liftgate.io)
+ #[ProductKit](https://productkit.liftgate.io) ![logo](Product-Kit_Logo.jpg)
 
 
 
