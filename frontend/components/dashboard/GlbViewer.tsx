@@ -100,11 +100,6 @@ export default function GlbViewer({
                 </Canvas>
             </Suspense>
 
-            {/* UI Overlays */}
-            <div className="absolute top-3 left-3 px-3 py-1.5 bg-white/90 dark:bg-black/70 text-foreground text-xs font-medium rounded-lg backdrop-blur-md shadow-sm border border-white/20">
-                AR Model Preview
-            </div>
-
             <div className="absolute bottom-3 right-3 flex gap-2">
                 <div className="px-3 py-1.5 bg-black/60 text-white text-xs rounded-lg backdrop-blur-md pointer-events-none flex items-center gap-1.5">
                     <Maximize2 className="h-3 w-3" />

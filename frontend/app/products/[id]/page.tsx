@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Download, Share2, Edit, MoreHorizontal, Copy, Check, Trash2, ShoppingBag, Video as VideoIcon, Play } from "lucide-react";
+import { ArrowLeft, Download, Share2, Edit, MoreHorizontal, Copy, Check, Trash2, ShoppingBag, Video as VideoIcon, Play, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
@@ -18,6 +18,13 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [activeImage, setActiveImage] = useState("");
   const [copied, setCopied] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+
+  // Edit state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -78,6 +85,60 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     window.location.reload();
   };
 
+  const startEditingTitle = () => {
+    setEditedTitle(product.name);
+    setIsEditingTitle(true);
+  };
+
+  const startEditingDescription = () => {
+    setEditedDescription(product.description || "");
+    setIsEditingDescription(true);
+  };
+
+  const cancelEditingTitle = () => {
+    setIsEditingTitle(false);
+    setEditedTitle("");
+  };
+
+  const cancelEditingDescription = () => {
+    setIsEditingDescription(false);
+    setEditedDescription("");
+  };
+
+  const saveTitle = async () => {
+    if (!editedTitle.trim()) {
+      return; // Don't save empty titles
+    }
+
+    setIsSaving(true);
+    try {
+      const updated = await api.updateProduct(id, { name: editedTitle.trim() });
+      setProduct(updated);
+      setIsEditingTitle(false);
+      setEditedTitle("");
+    } catch (error) {
+      console.error("Failed to update title", error);
+      alert("Failed to update title. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveDescription = async () => {
+    setIsSaving(true);
+    try {
+      const updated = await api.updateProduct(id, { description: editedDescription.trim() });
+      setProduct(updated);
+      setIsEditingDescription(false);
+      setEditedDescription("");
+    } catch (error) {
+      console.error("Failed to update description", error);
+      alert("Failed to update description. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="p-8 text-center">Loading product...</div>;
   }
@@ -130,7 +191,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 src={activeImage}
                 alt={product.name}
                 fill
-                className="object-cover"
+                className="object-contain"
                 priority
               />
             ) : (
@@ -148,7 +209,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   src={image}
                   alt={`${product.name} view ${index + 1}`}
                   fill
-                  className="object-cover"
+                  className="object-contain bg-muted"
                 />
                 {index < (product.generatedAssets?.heroImages?.length || 0) && (
                   <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded">

@@ -94,10 +94,6 @@ export function Header() {
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
-              <Link href="/settings" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                <UserIcon className="h-4 w-4" />
-                Profile
-              </Link>
               <div className="h-px bg-gray-100 my-1" />
               <button onClick={logout} className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
                 <LogOut className="h-4 w-4" />

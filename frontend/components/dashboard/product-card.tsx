@@ -42,11 +42,12 @@ interface ProductCardProps {
   product: Product;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  onDelete?: () => void;
 }
 
 
 
-export function ProductCard({ product, isFavorite = false, onToggleFavorite }: ProductCardProps) {
+export function ProductCard({ product, isFavorite = false, onToggleFavorite, onDelete }: ProductCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
@@ -54,12 +55,13 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite }: P
     try {
       setIsDeleting(true);
       await api.deleteProduct(product.id);
-      router.refresh();
+      setShowDeleteDialog(false);
+      // Call the onDelete callback to notify parent to refresh
+      onDelete?.();
     } catch (error) {
       console.error("Failed to delete product:", error);
     } finally {
       setIsDeleting(false);
-      setShowDeleteDialog(false);
     }
   };
 
@@ -90,11 +92,6 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite }: P
 
           {/* Overlay Actions */}
           <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px]">
-            <Link href={`/onboarding?slug=${product.slug}`}>
-              <Button size="icon" variant="secondary" className="h-9 w-9 rounded-full">
-                <Edit className="h-4 w-4" />
-              </Button>
-            </Link>
             <Link href={`/products/${product.id}`}>
               <Button size="icon" variant="secondary" className="h-9 w-9 rounded-full">
                 <ExternalLink className="h-4 w-4" />

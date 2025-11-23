@@ -48,6 +48,29 @@ export default function DashboardPage() {
     fetchProducts();
   }, [user]);
 
+  // Refetch products function that can be called after deletion
+  const refetchProducts = async () => {
+    try {
+      const data = await api.getProducts();
+      const mappedProducts = (data.products || []).map((p: any) => ({
+        id: p._id,
+        name: p.name,
+        slug: p.name.toLowerCase().replace(/ /g, '-'),
+        status: mapStatus(p.status),
+        thumbnailUrl: p.originalImages?.[0] || "",
+        lastModified: new Date(p.updatedAt).toLocaleDateString(),
+        updatedAt: p.updatedAt,
+        generatedAssets: p.generatedAssets ? {
+          arModelUrl: p.generatedAssets.arModelUrl,
+        } : undefined,
+        shopifyStorefrontUrl: p.shopifyStorefrontUrl,
+      }));
+      setProducts(mappedProducts);
+    } catch (error) {
+      console.error("Failed to refetch products", error);
+    }
+  };
+
   // Load favorites from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('favoriteProducts');
@@ -139,7 +162,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your AI-generated product assets.
+            View all your registered products here.
           </p>
         </div>
       </div>
@@ -177,11 +200,12 @@ export default function DashboardPage() {
       {filteredAndSortedProducts.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredAndSortedProducts.map((product) => (
-            <ProductCard 
-              key={product.id} 
+            <ProductCard
+              key={product.id}
               product={product}
               isFavorite={favorites.has(product.id)}
               onToggleFavorite={() => toggleFavorite(product.id)}
+              onDelete={refetchProducts}
             />
           ))}
         </div>
