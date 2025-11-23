@@ -22,7 +22,6 @@ export default function SignUpPage() {
     const password = formData.get("password") as string;
 
     try {
-      // Using email instead of email - backend may need to be updated to accept email
       await register({ email, password });
     } catch (err: any) {
       setError(err.message || "Failed to create account");

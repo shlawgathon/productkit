@@ -231,6 +231,20 @@ object JobManager {
                          if (shopifyResult != null) {
                              shopifyId = shopifyResult.id
                              shopifyUrl = shopifyResult.url
+                             
+                             // Update product with media (images)
+                             println("[SHOPIFY] Adding media to product ${shopifyResult.id}...")
+                             val mediaUpdated = shopify.updateProductMedia(
+                                 shopifyResult.id, 
+                                 generatedAssets, 
+                                 user.shopifyStoreUrl, 
+                                 user.shopifyAccessToken
+                             )
+                             if (mediaUpdated) {
+                                 println("[SHOPIFY] Media successfully added to product")
+                             } else {
+                                 println("[SHOPIFY] Failed to add media to product")
+                             }
                          }
                      } else {
                          println("[SHOPIFY] User ${product.userId} does not have Shopify credentials configured")

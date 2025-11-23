@@ -7,20 +7,20 @@ export default function Home() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
       <main className="flex flex-col items-center gap-8 text-center px-4">
         <div className="relative h-24 w-24 overflow-hidden mb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-            src="/icon.png" 
-            alt="ProductKit Logo" 
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon.png"
+            alt="ProductKit Logo"
             className="object-contain h-full w-full"
-            />
+          />
         </div>
-        
-        <h1 className="text-4xl font-bold tracking-tight sm:text-6xl bg-clip-text text-transparent bg-linear-to-r from-blue-600 to-purple-600">
+
+        <h1 className="text-4xl font-bold tracking-tight sm:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
           ProductKit
         </h1>
-        
+
         <p className="max-w-md text-lg text-muted-foreground">
-          Generate stunning product assets with AI. 
+          Generate stunning product assets with AI.
           Create, manage, and export your product visuals in seconds.
         </p>
 

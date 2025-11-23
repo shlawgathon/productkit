@@ -182,7 +182,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           {/* AI Analytics Section */}
           <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
             <div
-              className="p-6 border-b bg-linear-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 cursor-pointer hover:bg-blue-100/50 transition-colors"
+              className="p-6 border-b bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 cursor-pointer hover:bg-blue-100/50 transition-colors"
               onClick={() => setShowAnalytics(!showAnalytics)}
             >
               <div className="flex items-center justify-between">
@@ -242,7 +242,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   </div>
                 </div>
               </div>
-            )}\n          </div>
+            )}</div>
 
           {/* 3D AR Model Preview */}
           {product.generatedAssets?.arModelUrl && (

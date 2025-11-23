@@ -12,7 +12,7 @@ import kotlinx.serialization.json.*
 
 class ShopifyService {
     private val client = HttpClient(CIO)
-    private val json = Json { 
+    private val json = Json {
         ignoreUnknownKeys = true
         prettyPrint = true
     }
@@ -117,20 +117,135 @@ class ShopifyService {
 
             val productId = productData["id"]?.jsonPrimitive?.content ?: return null
             val handle = productData["handle"]?.jsonPrimitive?.content ?: ""
-            val onlineStoreUrl = productData["onlineStoreUrl"]?.jsonPrimitive?.content 
-                ?: "https://${shopDomain}/products/$handle"
-
-            println("[SHOPIFY] Product created successfully: $productId ($onlineStoreUrl)")
+            val id = productId.removePrefix("gid://shopify/Product/")
+            println("[SHOPIFY] Product created successfully: $productId ()")
 
             return ShopifyProductResult(
                 id = productId,
                 handle = handle,
-                url = onlineStoreUrl
+                url = "https://admin.shopify.com/store/${
+                    shopDomain.removeSuffix(".myshopify.com")
+                }/products/$id"
             )
         } catch (e: Exception) {
             println("[SHOPIFY] Failed to create Shopify product: ${e.message}")
             e.printStackTrace()
             return null
+        }
+    }
+
+    suspend fun updateProductMedia(productId: String, assets: GeneratedAssets, shopDomain: String, accessToken: String): Boolean {
+        if (shopDomain.isBlank() || accessToken.isBlank()) {
+            println("[SHOPIFY] Missing credentials, skipping media update")
+            return false
+        }
+
+        try {
+            println("[SHOPIFY] Updating product $productId with media...")
+
+            // Build media array from generated assets
+            val mediaItems = buildList {
+                // Add hero images if available
+                assets.heroImages.forEach { url ->
+                    add("""
+                        {
+                            originalSource: "$url",
+                            alt: "${assets.productCopy.description.take(100).replace("\"", "\\\"")}",
+                            mediaContentType: IMAGE
+                        }
+                    """.trimIndent())
+                }
+
+                // Add lifestyle images if available
+                assets.lifestyleImages.forEach { url ->
+                    add("""
+                        {
+                            originalSource: "$url",
+                            alt: "${assets.productCopy.description.take(100).replace("\"", "\\\"")}",
+                            mediaContentType: IMAGE
+                        }
+                    """.trimIndent())
+                }
+
+                // Add detail images if available
+                assets.detailImages.forEach { url ->
+                    add("""
+                        {
+                            originalSource: "$url",
+                            alt: "${assets.productCopy.description.take(100).replace("\"", "\\\"")}",
+                            mediaContentType: IMAGE
+                        }
+                    """.trimIndent())
+                }
+            }
+
+            if (mediaItems.isEmpty()) {
+                println("[SHOPIFY] No media to add")
+                return false
+            }
+
+            // Build GraphQL mutation for product update with media
+            val mutation = """
+                mutation {
+                  productUpdate(
+                    product: {
+                      id: "$productId"
+                    },
+                    media: [
+                      ${mediaItems.joinToString(",\n                      ")}
+                    ]
+                  ) {
+                    product {
+                      id
+                      media(first: 10) {
+                        nodes {
+                          alt
+                          mediaContentType
+                          preview {
+                            status
+                          }
+                        }
+                      }
+                    }
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+            """.trimIndent()
+
+            val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
+
+            val response: HttpResponse = client.post(apiUrl) {
+                contentType(ContentType.Application.Json)
+                header("X-Shopify-Access-Token", accessToken)
+                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(mutation)))
+            }
+
+            val responseBody = response.bodyAsText()
+            println("[SHOPIFY] Media update response: $responseBody")
+
+            val responseJson = json.parseToJsonElement(responseBody).jsonObject
+            val data = responseJson["data"]?.jsonObject
+            val productUpdate = data?.get("productUpdate")?.jsonObject
+            val userErrors = productUpdate?.get("userErrors")?.jsonArray
+
+            if (userErrors != null && userErrors.isNotEmpty()) {
+                println("[SHOPIFY] User errors during media update:")
+                userErrors.forEach { error ->
+                    val errorObj = error.jsonObject
+                    println("  - ${errorObj["field"]?.jsonPrimitive?.content}: ${errorObj["message"]?.jsonPrimitive?.content}")
+                }
+                return false
+            }
+
+            println("[SHOPIFY] Media updated successfully for product $productId")
+            return true
+        } catch (e: Exception) {
+            println("[SHOPIFY] Failed to update product media: ${e.message}")
+            e.printStackTrace()
+            return false
         }
     }
 
@@ -151,11 +266,11 @@ class ShopifyService {
 
         return try {
             println("[SHOPIFY] Fetching reviews for product $shopifyProductId from $shopDomain...")
-            
+
             // Note: Reviews are typically handled by third-party apps in Shopify
             // This would require integration with specific review app APIs
             // Common apps: Judge.me, Yotpo, Loox, etc.
-            
+
             println("[SHOPIFY] Note: Review fetching requires integration with a specific review app API")
             emptyList()
         } catch (e: Exception) {
