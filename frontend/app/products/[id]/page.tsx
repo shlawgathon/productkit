@@ -89,17 +89,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               </a>
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share
-          </Button>
-          <Button variant="default" size="sm" className="gap-2">
-            <Edit className="h-4 w-4" />
-            Edit Product
-          </Button>
-          <Button variant="ghost" size="icon">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 

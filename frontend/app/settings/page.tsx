@@ -15,7 +15,7 @@ export default function SettingsPage() {
   const [brand, setBrand] = useState({
     primaryColor: "#000000",
     secondaryColor: "#ffffff",
-    fontFamily: "Inter",
+    fontFamily: "Instrument Sans",
     tone: "Professional"
   });
   const [profile, setProfile] = useState({
@@ -237,7 +237,7 @@ export default function SettingsPage() {
               <Label htmlFor="fontFamily">Font Family</Label>
               <Input
                 id="fontFamily"
-                placeholder="e.g. Inter, Roboto"
+                placeholder="e.g. Instrument Sans, Roboto"
                 value={brand.fontFamily}
                 onChange={(e) => setBrand({ ...brand, fontFamily: e.target.value })}
               />
