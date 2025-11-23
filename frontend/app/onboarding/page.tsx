@@ -42,6 +42,16 @@ function OnboardingContent() {
     }
   }, [slug]);
 
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, [files]);
+
   const handleNext = () => {
     // Validation before advancing steps
     if (currentStep === 0 && files.length === 0) {
@@ -325,7 +335,7 @@ function OnboardingContent() {
               {currentStep === steps.length - 1 ? (
                 <Button
                   size="lg"
-                  className="gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                  className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all"
                   onClick={handleCreateProduct}
                   disabled={isSubmitting || productName.trim() === '' || productDescription.trim() === '' || files.length === 0}
                 >
@@ -347,7 +357,7 @@ function OnboardingContent() {
               <div className="rounded-2xl border bg-muted/30 p-8 backdrop-blur-sm">
                 <h3 className="font-semibold mb-4">Preview</h3>
                 <div className="aspect-3/4 rounded-xl bg-white shadow-sm border overflow-hidden relative group">
-                  <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/60 z-10 flex flex-col justify-end p-6 text-white">
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10 flex flex-col justify-end p-6 text-white">
                     <h4 className="text-xl font-bold">{productName || "Product Name"}</h4>
                     <p className="text-sm opacity-80 line-clamp-2">{productDescription || "Product description will appear here..."}</p>
                   </div>

@@ -85,7 +85,7 @@ class ShopifyService {
             """.trimIndent()
 
             val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
-
+            
             val response: HttpResponse = client.post(apiUrl) {
                 contentType(ContentType.Application.Json)
                 header("X-Shopify-Access-Token", accessToken)

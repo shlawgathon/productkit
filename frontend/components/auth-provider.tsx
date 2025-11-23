@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         initAuth();
-    }, []);
+    }, [router, pathname]);
 
     const login = async (credentials: any) => {
         const response = await api.login(credentials);
