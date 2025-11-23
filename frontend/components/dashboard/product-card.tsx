@@ -11,6 +11,7 @@ import GlbViewer from "@/components/dashboard/GlbViewer";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
+import { formatStatus } from "@/lib/format-status";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -127,9 +128,7 @@ export function ProductCard({ product, isFavorite = false, onToggleFavorite, onD
                 product.status === "draft" && "text-gray-600 font-medium",
               )}
             >
-              {product.status === "post_completion_assets"
-                ? "Finalizing..."
-                : product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+              {formatStatus(product.status)}
             </Badge>
           </div>
 

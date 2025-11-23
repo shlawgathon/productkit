@@ -190,6 +190,14 @@ class ApiClient {
         return this.request<any>(`/api/products/${id}/status`);
     }
 
+    // Enhance product description using image URL and existing description
+    public async enhanceProductDescription(imageUrl: string, description: string) {
+        return this.request<any>('/api/products/enhance-description', {
+            method: 'POST',
+            body: JSON.stringify({ imageUrl, description }),
+        });
+    }
+
 
 
     // Settings

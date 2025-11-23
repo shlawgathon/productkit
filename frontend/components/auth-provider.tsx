@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     localStorage.setItem('user', JSON.stringify(userData));
                 } catch (error) {
                     console.error("Auth check failed", error);
-                    
+
                     api.clearTokens();
                     setUser(null);
                     localStorage.removeItem('user');
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             api.setTokens(response.token, response.refreshToken);
             setUser(response.user);
             localStorage.setItem('user', JSON.stringify(response.user));
-            router.push('/onboarding');
+            router.push('/dashboard/onboarding');
         } catch (error) {
             throw error;
         }

@@ -16,7 +16,7 @@ export function FAB() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href="/onboarding">
+            <Link href="/dashboard/onboarding">
               <Button
                 size="icon"
                 className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 bg-primary text-primary-foreground"
