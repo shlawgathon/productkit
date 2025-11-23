@@ -22,7 +22,7 @@ class AnthropicService(
         .build()
 ) {
     companion object {
-        private const val DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
+        private const val DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
         private const val DEFAULT_MAX_TOKENS = 1024
     }
 
