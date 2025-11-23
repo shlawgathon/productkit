@@ -144,7 +144,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="flex items-center">
+      <div className="flex items-center gap-3">
         <input
           type="search"
           placeholder="Search products..."
@@ -152,6 +152,26 @@ export default function DashboardPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="h-10 w-full max-w-sm rounded-lg border border-input bg-transparent px-4 text-sm outline-none focus:border-primary transition-colors"
         />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleSort}
+            className="gap-2"
+          >
+            {sortOrder === "asc" ? (
+              <>
+                <ArrowUp className="h-4 w-4" />
+                Date: Oldest First
+              </>
+            ) : (
+              <>
+                <ArrowDown className="h-4 w-4" />
+                Date: Newest First
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {filteredAndSortedProducts.length > 0 ? (
