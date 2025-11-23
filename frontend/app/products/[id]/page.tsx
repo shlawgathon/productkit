@@ -166,7 +166,52 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <span>Products</span>
           </div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
+            {isEditingTitle ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary focus:outline-none flex-1 min-w-0"
+                  autoFocus
+                  disabled={isSaving}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveTitle();
+                    if (e.key === 'Escape') cancelEditingTitle();
+                  }}
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={saveTitle}
+                  disabled={isSaving || !editedTitle.trim()}
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={cancelEditingTitle}
+                  disabled={isSaving}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={startEditingTitle}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </>
+            )}
             <Badge variant="outline" className="h-6">{product.status}</Badge>
           </div>
         </div>
@@ -296,8 +341,54 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <h3 className="font-semibold mb-4">Product Details</h3>
             <div className="space-y-4 text-sm">
               <div>
-                <span className="text-muted-foreground block mb-1">Description</span>
-                <p className="leading-relaxed">{product.description || "No description"}</p>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-muted-foreground">Description</span>
+                  {!isEditingDescription && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      onClick={startEditingDescription}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                {isEditingDescription ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      className="w-full min-h-[100px] p-2 text-sm leading-relaxed bg-muted/30 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      autoFocus
+                      disabled={isSaving}
+                      placeholder="Enter product description..."
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={cancelEditingDescription}
+                        disabled={isSaving}
+                      >
+                        <X className="h-3 w-3" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 gap-1 bg-green-600 hover:bg-green-700"
+                        onClick={saveDescription}
+                        disabled={isSaving}
+                      >
+                        <Save className="h-3 w-3" />
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="leading-relaxed">{product.description || "No description"}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

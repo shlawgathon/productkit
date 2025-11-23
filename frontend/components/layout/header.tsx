@@ -34,7 +34,10 @@ export function Header() {
   const displayName = user?.firstName ? `${user.firstName} ${user.lastName || ''}` : user?.email || 'User';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b bg-white/70 backdrop-blur-lg transition-all">
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b backdrop-blur-lg transition-all" style={{
+      backgroundColor: 'rgba(251, 254, 251, 0.7)',
+      borderColor: 'var(--border)'
+    }}>
       <div className="flex h-full items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" className="md:hidden">
@@ -59,7 +62,9 @@ export function Header() {
           <NotificationBell />
 
           <div className="relative group">
-            <div className="h-8 w-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 ring-2 ring-white cursor-pointer flex items-center justify-center text-white font-bold text-xs select-none overflow-hidden">
+            <div className="h-8 w-8 rounded-full ring-2 ring-primary cursor-pointer flex items-center justify-center text-white font-bold text-xs select-none overflow-hidden" style={{
+              background: 'linear-gradient(135deg, #BAA5FF 0%, #2C2A4A 100%)'
+            }}>
               {user?.profileImage ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={user.profileImage} alt="Profile" className="h-full w-full object-cover" />
@@ -69,15 +74,25 @@ export function Header() {
             </div>
 
             {/* Profile Dropdown */}
-            <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border bg-white p-1 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
-              <div className="px-2 py-2 border-b mb-1">
-                <p className="text-sm font-medium">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50" style={{
+              backgroundColor: 'var(--card)',
+              borderColor: 'var(--border)'
+            }}>
+              <div className="px-2 py-2 border-b mb-1" style={{ borderColor: 'var(--border)' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{displayName}</p>
+                <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{user?.email}</p>
               </div>
 
               <div
-                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors cursor-pointer"
+                style={{ color: 'var(--text-primary)' }}
                 onClick={() => fileInputRef.current?.click()}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
               >
                 <Upload className="h-4 w-4" />
                 Upload Photo
@@ -90,12 +105,32 @@ export function Header() {
                 onChange={handleFileUpload}
               />
 
-              <Link href="/settings" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <Link
+                href="/settings"
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
-              <div className="h-px bg-gray-100 my-1" />
-              <button onClick={logout} className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+              <div className="h-px my-1" style={{ backgroundColor: 'var(--border)' }} />
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors"
+                style={{ color: 'var(--error)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 59, 48, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
                 <LogOut className="h-4 w-4" />
                 Log out
               </button>

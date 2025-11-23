@@ -62,8 +62,16 @@ fun Route.registerProductRoutes() {
         }
 
         put<UpdateProductRequest>("/{productId}") { req ->
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.subject ?: return@put call.respond(HttpStatusCode.Unauthorized)
             val id = call.parameters["productId"] ?: return@put call.respond(HttpStatusCode.BadRequest)
             val existing = productRepo.findById(id) ?: return@put call.respond(HttpStatusCode.NotFound)
+            
+            // Check if user owns this product
+            if (existing.userId != userId) {
+                return@put call.respond(HttpStatusCode.Forbidden, mapOf("error" to "You don't have permission to update this product"))
+            }
+            
             val updated = existing.copy(
                 name = req.name ?: existing.name,
                 description = req.description ?: existing.description,
