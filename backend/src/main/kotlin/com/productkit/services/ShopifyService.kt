@@ -208,138 +208,131 @@ class ShopifyService {
         }
     }
 
-    suspend fun updateProductMedia(product: Product, assets: GeneratedAssets, shopDomain: String, accessToken: String): Boolean {
+    suspend fun createProductMedia(product: Product, assets: GeneratedAssets, shopDomain: String, accessToken: String): Boolean {
         if (shopDomain.isBlank() || accessToken.isBlank()) {
-            println("[SHOPIFY] Missing credentials, skipping media update")
+            println("[SHOPIFY] Missing credentials, skipping media creation")
             return false
         }
 
         try {
-            println("[SHOPIFY] Updating product ${product.shopifyProductId ?: product._id} with media...")
+            println("[SHOPIFY] Adding media to product ${product.shopifyProductId ?: product._id}...")
 
-            // Build media array from generated assets
-            val mediaItems = buildList {
-                // Add hero images if available
+            // Build media array for variables
+            val mediaList = buildList {
+                // Add hero images
                 assets.heroImages.forEach { url ->
-                    add("""
-                        {
-                            originalSource: "$url",
-                            alt: "${assets.productCopy.description.take(100).replace("\"", "\\\"")}",
-                            mediaContentType: IMAGE
-                        }
-                    """.trimIndent())
+                    add(buildJsonObject {
+                        put("originalSource", url)
+                        put("alt", assets.productCopy.description.take(100))
+                        put("mediaContentType", "IMAGE")
+                    })
                 }
 
-                // Add lifestyle images if available
+                // Add lifestyle images
                 assets.lifestyleImages.forEach { url ->
-                    add("""
-                        {
-                            originalSource: "$url",
-                            alt: "${assets.productCopy.description.take(100).replace("\"", "\\\"")}",
-                            mediaContentType: IMAGE
-                        }
-                    """.trimIndent())
+                    add(buildJsonObject {
+                        put("originalSource", url)
+                        put("alt", assets.productCopy.description.take(100))
+                        put("mediaContentType", "IMAGE")
+                    })
                 }
 
-                // Add detail images if available
+                // Add detail images
                 assets.detailImages.forEach { url ->
-                    add("""
-                        {
-                            originalSource: "$url",
-                            alt: "${assets.productCopy.description.take(100).replace("\"", "\\\"")}",
-                            mediaContentType: IMAGE
-                        }
-                    """.trimIndent())
+                    add(buildJsonObject {
+                        put("originalSource", url)
+                        put("alt", assets.productCopy.description.take(100))
+                        put("mediaContentType", "IMAGE")
+                    })
                 }
 
-                // Add 3D Model if available
+                // Add 3D Model
                 if (assets.arModelUrl != null) {
-                    add("""
-                        {
-                            originalSource: "${assets.arModelUrl}",
-                            alt: "3D Model of ${product.name.take(50).replace("\"", "\\\"")}",
-                            mediaContentType: MODEL_3D
-                        }
-                    """.trimIndent())
+                    add(buildJsonObject {
+                        put("originalSource", assets.arModelUrl)
+                        put("alt", "3D Model of ${product.name.take(50)}")
+                        put("mediaContentType", "MODEL_3D")
+                    })
                 }
 
-                // Add Video if available
+                // Add Video
                 if (assets.videoUrl != null) {
-                    add("""
-                        {
-                            originalSource: "${assets.videoUrl}",
-                            alt: "Product Showcase Video",
-                            mediaContentType: VIDEO
-                        }
-                    """.trimIndent())
+                    add(buildJsonObject {
+                        put("originalSource", assets.videoUrl)
+                        put("alt", "Product Showcase Video")
+                        put("mediaContentType", "VIDEO")
+                    })
+                }
+
+                // Add Infographic
+                if (assets.infographicUrl != null) {
+                    add(buildJsonObject {
+                        put("originalSource", assets.infographicUrl)
+                        put("alt", "Product Infographic")
+                        put("mediaContentType", "IMAGE")
+                    })
                 }
             }
 
-            if (mediaItems.isEmpty()) {
+            if (mediaList.isEmpty()) {
                 println("[SHOPIFY] No media to add")
                 return false
             }
 
-            // Build GraphQL mutation for product update with media
             val mutation = """
-                mutation {
-                  productUpdate(
-                    product: {
-                      id: "${product.shopifyProductId ?: product._id}"
-                    },
-                    media: [
-                      ${mediaItems.joinToString(",\n                      ")}
-                    ]
-                  ) {
-                    product {
-                      id
-                      media(first: 10) {
-                        nodes {
-                          alt
-                          mediaContentType
-                          preview {
-                            status
-                          }
-                        }
-                      }
+                mutation productCreateMedia(${'$'}media: [CreateMediaInput!]!, ${'$'}productId: ID!) {
+                  productCreateMedia(media: ${'$'}media, productId: ${'$'}productId) {
+                    media {
+                      alt
+                      mediaContentType
+                      status
                     }
-                    userErrors {
+                    mediaUserErrors {
                       field
                       message
+                    }
+                    product {
+                      id
+                      title
                     }
                   }
                 }
             """.trimIndent()
+
+            val variables = buildJsonObject {
+                put("media", JsonArray(mediaList))
+                put("productId", product.shopifyProductId ?: product._id)
+            }
 
             val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
 
             val response: HttpResponse = client.post(apiUrl) {
                 contentType(ContentType.Application.Json)
                 header("X-Shopify-Access-Token", accessToken)
-                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(mutation)))
+                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(mutation, variables)))
             }
 
             val responseBody = response.bodyAsText()
-            println("[SHOPIFY] Media update response: $responseBody")
+            println("[SHOPIFY] Media creation response: $responseBody")
 
             val responseJson = json.parseToJsonElement(responseBody).jsonObject
             val data = responseJson["data"]?.jsonObject
-            val productUpdate = data?.get("productUpdate")?.jsonObject
-            val userErrors = productUpdate?.get("userErrors")?.jsonArray
+            val productCreateMedia = data?.get("productCreateMedia")?.jsonObject
+            val mediaUserErrors = productCreateMedia?.get("mediaUserErrors")?.jsonArray
 
-            if (userErrors != null && userErrors.isNotEmpty()) {
-                println("[SHOPIFY] User errors during media update:")
-                userErrors.forEach { error ->
+            if (mediaUserErrors != null && mediaUserErrors.isNotEmpty()) {
+                println("[SHOPIFY] User errors during media creation:")
+                mediaUserErrors.forEach { error ->
                     val errorObj = error.jsonObject
-                    println("  - ${errorObj["field"]?.jsonPrimitive?.content}: ${errorObj["message"]?.jsonPrimitive?.content}")
+                    println("  - ${errorObj["field"]?.jsonArray?.joinToString { it.jsonPrimitive.content }}: ${errorObj["message"]?.jsonPrimitive?.content}")
                 }
                 return false
             }
 
-            println("[SHOPIFY] Media updated successfully for product ${product.shopifyProductId ?: product._id}")
+            println("[SHOPIFY] Media created successfully for product ${product.shopifyProductId ?: product._id}")
             return true
         } catch (e: Exception) {
-            println("[SHOPIFY] Failed to update product media: ${e.message}")
+            println("[SHOPIFY] Failed to create product media: ${e.message}")
             e.printStackTrace()
             return false
         }

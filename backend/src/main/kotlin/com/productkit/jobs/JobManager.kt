@@ -310,7 +310,7 @@ object JobManager {
                              // Update product with media (images)
                              println("[SHOPIFY] Adding media to product ${shopifyResult.id}...")
                              val productWithId = product.copy(shopifyProductId = shopifyResult.id)
-                             val mediaUpdated = shopify.updateProductMedia(
+                             val mediaUpdated = shopify.createProductMedia(
                                  productWithId,
                                  generatedAssets,
                                  user.shopifyStoreUrl,
@@ -449,12 +449,20 @@ object JobManager {
                                     val user = userRepo.findById(postProduct.userId)
                                     if (user?.shopifyStoreUrl != null && user.shopifyAccessToken != null) {
                                         println("[SHOPIFY] Uploading post-completion assets to Shopify...")
-                                        val mediaUpdated = shopify.updateProductMedia(
-                                            finalProduct,
-                                            updatedAssets,
-                                            user.shopifyStoreUrl,
-                                            user.shopifyAccessToken
-                                        )
+                                    // Create a GeneratedAssets object with ONLY the new assets to avoid duplicating existing ones
+                                    val newAssetsOnly = com.productkit.models.GeneratedAssets(
+                                        arModelUrl = assets3d,
+                                        videoUrl = videoUrl,
+                                        infographicUrl = infographicUrl,
+                                        productCopy = finalProduct.generatedAssets?.productCopy ?: com.productkit.models.ProductCopy("", "", "", emptyList(), emptyList(), emptyList(), emptyList())
+                                    )
+                                    
+                                    val mediaUpdated = shopify.createProductMedia(
+                                        finalProduct,
+                                        newAssetsOnly,
+                                        user.shopifyStoreUrl,
+                                        user.shopifyAccessToken
+                                    )
                                         if (mediaUpdated) {
                                             println("[SHOPIFY] Post-completion assets successfully added to product")
                                         } else {
