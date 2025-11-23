@@ -44,7 +44,7 @@ export function Header() {
             <div className="relative h-8 w-8 overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/icon.png"
+                src="/logo.png"
                 alt="ProductKit Logo"
                 className="object-contain h-full w-full"
               />

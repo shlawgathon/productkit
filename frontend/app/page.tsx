@@ -9,7 +9,7 @@ export default function Home() {
         <div className="relative h-24 w-24 overflow-hidden mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/icon.png"
+            src="/logo.png"
             alt="ProductKit Logo"
             className="object-contain h-full w-full"
           />
@@ -29,11 +29,6 @@ export default function Home() {
             <Button size="lg" className="gap-2">
               Go to Dashboard
               <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href="/onboarding">
-            <Button size="lg" variant="outline">
-              Create Product
             </Button>
           </Link>
         </div>
