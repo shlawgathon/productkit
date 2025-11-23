@@ -10,7 +10,7 @@ import { ShopifyIcon } from "@/components/icons/shopify-icon";
 
 export function Header() {
   const { user, logout, updateUser } = useAuth();
-  const isShopifyConnected = !!(user?.shopifyStoreUrl && user?.shopifyAccessToken);
+  // const isShopifyConnected = !!(user?.shopifyStoreUrl && user?.shopifyAccessToken);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
@@ -80,13 +80,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/5 border border-border">
-            <ShopifyIcon className="h-4 w-4" />
-            <span className="text-xs font-medium text-muted-foreground">
-              {isShopifyConnected ? "Connected" : "Disconnected"}
-            </span>
-            <div className={`w-2 h-2 rounded-full ${isShopifyConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          </div>
 
           <Button
             variant="ghost"
