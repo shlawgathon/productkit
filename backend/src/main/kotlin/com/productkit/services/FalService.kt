@@ -38,7 +38,8 @@ class FalService(
         productId: String,
         baseImage: String,
         type: String,
-        count: Int
+        count: Int,
+        brandGuidelines: com.productkit.models.BrandGuidelines? = null
     ): ImageData {
         // Dynamically generate prompts based on the image content
         // First, understand the image using the bagel/understand model
@@ -46,7 +47,7 @@ class FalService(
         val understoodDescription = understandImage(baseImage)
         println("[UNDERSTOOD] $understoodDescription")
         // Then, generate marketing prompts using a Llama 3 model
-        val generatedPrompts = generatePromptsFromDescription(understoodDescription)
+        val generatedPrompts = generatePromptsFromDescription(understoodDescription, brandGuidelines)
         println("[PROMPTS] $generatedPrompts")
 
         // Ensure we have at least some prompts; fallback to default if needed
@@ -318,8 +319,8 @@ class FalService(
         return anthropicService.understandImage(imageUrl)
     }
 
-    private suspend fun generatePromptsFromDescription(description: String): List<String> {
+    private suspend fun generatePromptsFromDescription(description: String, brandGuidelines: com.productkit.models.BrandGuidelines? = null): List<String> {
         println("[FalService] Generating prompts using Anthropic...")
-        return anthropicService.generatePromptsFromDescription(description)
+        return anthropicService.generatePromptsFromDescription(description, brandGuidelines)
     }
 }
