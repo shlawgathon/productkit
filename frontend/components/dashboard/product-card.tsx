@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MoreHorizontal, Edit, ExternalLink, Trash2, ShoppingBag } from "lucide-react";
+import { MoreHorizontal, Edit, ExternalLink, Trash2, ShoppingBag, Wifi } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -105,8 +105,8 @@ export function ProductCard({ product }: ProductCardProps) {
             )}
             <Button
               size="icon"
-              variant="destructive"
-              className="h-9 w-9 rounded-full"
+              variant="secondary"
+              className="h-9 w-9 rounded-full bg-red-50 hover:bg-red-100 text-red-600"
               onClick={() => setShowDeleteDialog(true)}
             >
               <Trash2 className="h-4 w-4" />
@@ -141,9 +141,17 @@ export function ProductCard({ product }: ProductCardProps) {
                 Edited {product.lastModified}
               </p>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-muted-foreground">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            {product.shopifyStorefrontUrl ? (
+              <Link href={product.shopifyStorefrontUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-green-600 hover:text-green-700">
+                  <Wifi className="h-4 w-4" />
+                </Button>
+              </Link>
+            ) : (
+              <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-muted-foreground/30 cursor-not-allowed" disabled>
+                <Wifi className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
