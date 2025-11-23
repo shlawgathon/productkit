@@ -10,17 +10,21 @@ import Image from "next/image";
 interface UploadZoneProps {
   onFilesSelected: (files: File[]) => void;
   className?: string;
+  initialFiles?: File[];
 }
 
-export function UploadZone({ onFilesSelected, className }: UploadZoneProps) {
+export function UploadZone({ onFilesSelected, className, initialFiles = [] }: UploadZoneProps) {
+  const [files, setFiles] = useState<File[]>(initialFiles);
   const [previews, setPreviews] = useState<string[]>([]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    onFilesSelected(acceptedFiles);
-    
+    const newFiles = [...files, ...acceptedFiles];
+    setFiles(newFiles);
+    onFilesSelected(newFiles);
+
     const newPreviews = acceptedFiles.map(file => URL.createObjectURL(file));
     setPreviews(prev => [...prev, ...newPreviews]);
-  }, [onFilesSelected]);
+  }, [files, onFilesSelected]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -32,7 +36,12 @@ export function UploadZone({ onFilesSelected, className }: UploadZoneProps) {
 
   const removePreview = (index: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setPreviews(prev => prev.filter((_, i) => i !== index));
+    const newFiles = files.filter((_, i) => i !== index);
+    const newPreviews = previews.filter((_, i) => i !== index);
+
+    setFiles(newFiles);
+    setPreviews(newPreviews);
+    onFilesSelected(newFiles);
   };
 
   return (
@@ -85,7 +94,7 @@ export function UploadZone({ onFilesSelected, className }: UploadZoneProps) {
               </button>
             </div>
           ))}
-          <div 
+          <div
             {...getRootProps()}
             className="flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 hover:bg-muted/50 transition-colors"
           >
