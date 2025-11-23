@@ -59,8 +59,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          <NotificationBell />
-
           <div className="relative group">
             <div className="h-8 w-8 rounded-full ring-2 ring-primary cursor-pointer flex items-center justify-center text-white font-bold text-xs select-none overflow-hidden" style={{
               background: 'linear-gradient(135deg, #BAA5FF 0%, #2C2A4A 100%)'
