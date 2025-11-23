@@ -17,7 +17,7 @@ export function useProductStatus(productId: string, enabled: boolean = true) {
     useEffect(() => {
         if (!enabled || !productId) return;
 
-        const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080';
+        const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://prod-api-pkit.liftgate.io';
         const wsUrl = `${WS_URL}/ws/products/${productId}/status`;
 
         console.log(`[WebSocket] Connecting to ${wsUrl}`);

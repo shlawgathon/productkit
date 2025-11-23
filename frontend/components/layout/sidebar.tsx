@@ -50,15 +50,7 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="mt-auto px-4 py-4">
-          <div className="rounded-xl bg-linear-to-br from-gray-900 to-black p-4 text-white">
-            <h4 className="font-semibold text-sm">Pro Plan</h4>
-            <p className="text-xs text-gray-400 mt-1">50/100 generations used</p>
-            <div className="mt-3 h-1.5 w-full rounded-full bg-gray-800">
-              <div className="h-full w-1/2 rounded-full bg-white" />
-            </div>
-          </div>
-        </div>
+
       </div>
     </aside>
   );

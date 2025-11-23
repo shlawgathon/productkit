@@ -1,36 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-// Mock data fallback for when Shopify is not available
-const MOCK_REVIEWS = [
-  {
-    id: "gid://shopify/Metaobject/1",
-    rating: 5,
-    title: "Absolutely love it!",
-    body: "The minimalist design fits perfectly in my living room. The leather quality is top-notch.",
-    author: "Sarah J.",
-    date: "2023-10-25T14:30:00Z",
-    verified: true
-  },
-  {
-    id: "gid://shopify/Metaobject/2",
-    rating: 4,
-    title: "Great chair, but pricey",
-    body: "Comfortable and looks great. Took a bit longer to arrive than expected.",
-    author: "Michael B.",
-    date: "2023-10-28T09:15:00Z",
-    verified: true
-  },
-  {
-    id: "gid://shopify/Metaobject/3",
-    rating: 5,
-    title: "Worth every penny",
-    body: "I was hesitant at first, but the build quality is incredible. Highly recommend.",
-    author: "Emily R.",
-    date: "2023-11-02T18:45:00Z",
-    verified: false
-  }
-];
+
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -98,13 +69,10 @@ export async function GET(request: Request) {
       console.log(`Fetched ${reviews.length} reviews for product ${productId}`);
     } catch (e) {
       console.error("Failed to fetch Shopify reviews:", e);
-      // Fall back to mock data
-      console.log("Using mock reviews as fallback");
-      reviews = MOCK_REVIEWS;
+      throw e;
     }
   } else {
-    console.warn("Shopify credentials missing, using mock data");
-    reviews = MOCK_REVIEWS;
+    console.warn("Shopify credentials missing");
   }
 
   // 2. Prepare text for AI analysis
@@ -148,7 +116,7 @@ export async function GET(request: Request) {
   if (!aiAnalysis) {
     aiAnalysis = {
       summary: "Customers generally appreciate the design and quality (AI analysis disabled).",
-      keywords: ["Design", "Quality", "Mock Data"],
+      keywords: ["Design", "Quality"],
       improvement: "Add Anthropic API key to enable real insights.",
     };
   }
