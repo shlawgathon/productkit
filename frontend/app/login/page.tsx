@@ -22,12 +22,12 @@ function LoginForm() {
     setIsLoading(true);
     setError("");
     const formData = new FormData(e.currentTarget);
-    const username = formData.get("username") as string;
+    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     try {
       // Using username instead of email - backend may need to be updated to accept username
-      await login({ username, password });
+      await login({ email, password });
       router.push(redirect);
     } catch (err: any) {
       setError(err.message || "Failed to login");
@@ -85,12 +85,12 @@ function LoginForm() {
         >
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
                 required
                 placeholder="johndoe"
               />
