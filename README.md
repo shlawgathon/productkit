@@ -1,4 +1,11 @@
 # [ProductKit](https://productkit.liftgate.io)
+
+
+! [logo](Product-kit_Logo.jpg)
+
+
+
+
 An agentic platform to automatically generate product listings for user-facing pages, Shopify integrations, and FAQ/documentation.
 
 ## Description
