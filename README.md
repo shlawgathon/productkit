@@ -4,6 +4,7 @@
 
 An agentic platform to automatically generate product listings for user-facing pages, Shopify integrations, and FAQ/documentation.
 
+
 ## Description
 
 ProductKit is an intuitive, all-in-one toolkit for product designers, small businesses, and others to easily set up and maintain their storefront.
