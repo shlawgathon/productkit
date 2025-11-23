@@ -5,6 +5,9 @@ import ai.fal.client.kt.*
 import ai.fal.client.queue.QueueStatus
 import com.productkit.models.ImageData
 import com.productkit.utils.Config
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.*
 
 class FalService(
@@ -57,48 +60,60 @@ class FalService(
         val allImages = mutableListOf<com.productkit.models.Image>()
         var lastSeed: Long = 0
 
-        // Generate images with different prompts
-        for (i in 0 until minOf(count, prompts.size)) {
-            try {
-                val prompt = prompts[i]
-                println("[FalService] Generating image ${i + 1}/$count for product $productId with prompt: ${prompt.take(50)}...")
+        // Generate images with different prompts in parallel
+        coroutineScope {
+            val deferredImages = (0 until minOf(count, prompts.size)).map { i ->
+                async {
+                    try {
+                        val prompt = prompts[i]
+                        println("[FalService] Generating image ${i + 1}/$count for product $productId with prompt: ${prompt.take(50)}...")
 
-                // Prepare input for the model
-                val input = mapOf(
-                    "prompt" to prompt,
-                    "image_urls" to listOf(baseImage),
-                    "seed" to (lastSeed + i + 1) // Use different seeds for variety
-                )
+                        // Prepare input for the model
+                        val input = mapOf(
+                            "prompt" to prompt,
+                            "image_urls" to listOf(baseImage),
+                            "seed" to (lastSeed + i + 1) // Use different seeds for variety
+                        )
 
-                // Using subscribe for real-time updates
-                val result = fal.subscribe(
-                    endpointId = IMAGE_EDIT_MODEL,
-                    input = input,
-                    options = SubscribeOptions(logs = true)
-                ) { update ->
-                    when (update) {
-                        is QueueStatus.InProgress -> {
-                            println("[FalService] Processing image ${i + 1}: ${update.logs}")
+                        // Using subscribe for real-time updates
+                        val result = fal.subscribe(
+                            endpointId = IMAGE_EDIT_MODEL,
+                            input = input,
+                            options = SubscribeOptions(logs = true)
+                        ) { update ->
+                            when (update) {
+                                is QueueStatus.InProgress -> {
+                                    println("[FalService] Processing image ${i + 1}: ${update.logs}")
+                                }
+                                is QueueStatus.Completed -> {
+                                    println("[FalService] Completed image ${i + 1} for product: $productId")
+                                }
+                                else -> {
+                                    // Handle other status types if needed
+                                }
+                            }
                         }
-                        is QueueStatus.Completed -> {
-                            println("[FalService] Completed image ${i + 1} for product: $productId")
-                        }
-                        else -> {
-                            // Handle other status types if needed
-                        }
+
+                        // Extract URLs from the result
+                        val imageData = Json.decodeFromString<ImageData>(result.data.toString())
+                        println("[FalService] Successfully generated image ${i + 1}/$count")
+                        imageData
+                    } catch (e: Exception) {
+                        println("[FalService] Failed to generate image ${i + 1}: ${e.message}")
+                        e.printStackTrace()
+                        null
                     }
                 }
+            }
 
-                // Extract URLs from the result
-                val imageData = Json.decodeFromString<ImageData>(result.data.toString())
+            // Wait for all images to complete
+            val results = deferredImages.awaitAll()
+
+            // Collect successful results
+            results.filterNotNull().forEach { imageData ->
                 allImages.addAll(imageData.images)
+                // Update lastSeed with the seed from the last successful image (approximate)
                 lastSeed = imageData.seed
-
-                println("[FalService] Successfully generated image ${i + 1}/$count")
-            } catch (e: Exception) {
-                println("[FalService] Failed to generate image ${i + 1}: ${e.message}")
-                e.printStackTrace()
-                // Continue with other images even if one fails
             }
         }
 
@@ -186,27 +201,40 @@ class FalService(
         val input = mapOf(
             "input_image_url" to baseImage
         )
+
         // Submit the job to the omnipart endpoint.
         val submission = fal.queue.submit(
             endpointId = "fal-ai/omnipart",
             input = input,
             options = SubmitOptions()
         )
+
         // Poll for result synchronously (simple implementation).
         var attempts = 0
-        while (attempts < 100) { // wait up to ~30 seconds
-            try {
+        while (attempts < 300) { // wait up to ~100 seconds
+            runCatching {
+                val status = fal.queue.status(
+                    endpointId = "fal-ai/omnipart",
+                    requestId = submission.requestId
+                )
+
+                if (status.status != QueueStatus.Status.COMPLETED)
+                {
+                    attempts++
+                    kotlinx.coroutines.delay(1000L)
+                    return@runCatching
+                }
+
                 val result = fal.queue.result(
                     endpointId = "fal-ai/omnipart",
                     requestId = submission.requestId
                 )
-                // Assuming result.data contains a field "url" with the GLB location.
+
+                println("INP: ${result.data}")
                 return result.data.get("full_model_mesh").asJsonObject.get("url").asString
-            } catch (e: Exception) {
-                // If not ready yet, ignore and retry.
+            }.onFailure {
+                it.printStackTrace()
             }
-            attempts++
-            kotlinx.coroutines.delay(1000L)
         }
         throw IllegalStateException("Failed to retrieve GLB model from Fal AI after waiting")
     }
