@@ -29,6 +29,41 @@ class ShopifyService {
         val variables: JsonObject? = null
     )
 
+    private suspend fun getOnlineStorePublicationId(shopDomain: String, accessToken: String): String? {
+        val query = """
+            query {
+              publications(first: 20) {
+                nodes {
+                  id
+                  name
+                }
+              }
+            }
+        """.trimIndent()
+
+        val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
+
+        return try {
+            val response: HttpResponse = client.post(apiUrl) {
+                contentType(ContentType.Application.Json)
+                header("X-Shopify-Access-Token", accessToken)
+                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(query)))
+            }
+
+            val responseBody = response.bodyAsText()
+            val responseJson = json.parseToJsonElement(responseBody).jsonObject
+            val data = responseJson["data"]?.jsonObject
+            val publications = data?.get("publications")?.jsonObject?.get("nodes")?.jsonArray
+
+            publications?.map { it.jsonObject }
+                ?.find { it["name"]?.jsonPrimitive?.content == "Online Store" }
+                ?.get("id")?.jsonPrimitive?.content
+        } catch (e: Exception) {
+            println("[SHOPIFY] Failed to fetch publications: ${e.message}")
+            null
+        }
+    }
+
     suspend fun createProduct(product: Product, assets: GeneratedAssets, shopDomain: String, accessToken: String): ShopifyProductResult? {
         if (shopDomain.isBlank() || accessToken.isBlank()) {
             println("[SHOPIFY] Missing credentials, skipping product creation")
@@ -84,7 +119,7 @@ class ShopifyService {
                 }
             """.trimIndent()
 
-            val apiUrl = "https://${shopDomain}/admin/api/2024-10/graphql.json"
+            val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
 
             val response: HttpResponse = client.post(apiUrl) {
                 contentType(ContentType.Application.Json)
@@ -118,36 +153,43 @@ class ShopifyService {
             val productId = productData["id"]?.jsonPrimitive?.content ?: return null
             val handle = productData["handle"]?.jsonPrimitive?.content ?: ""
 
-            // Now publish the product to the Online Store
-            val publishMutation = """
-                mutation {
-                  publishablePublish(
-                    id: "$productId",
-                    input: [{
-                      publicationId: "gid://shopify/Publication/1"
-                    }]
-                  ) {
-                    publishable {
-                      availablePublicationsCount {
-                        count
+            // Fetch the Online Store Publication ID
+            val publicationId = getOnlineStorePublicationId(shopDomain, accessToken)
+
+            if (publicationId != null) {
+                // Now publish the product to the Online Store
+                val publishMutation = """
+                    mutation {
+                      publishablePublish(
+                        id: "$productId",
+                        input: [{
+                          publicationId: "$publicationId"
+                        }]
+                      ) {
+                        publishable {
+                          availablePublicationsCount {
+                            count
+                          }
+                        }
+                        userErrors {
+                          field
+                          message
+                        }
                       }
                     }
-                    userErrors {
-                      field
-                      message
-                    }
-                  }
+                """.trimIndent()
+
+                val publishResponse: HttpResponse = client.post(apiUrl) {
+                    contentType(ContentType.Application.Json)
+                    header("X-Shopify-Access-Token", accessToken)
+                    setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(publishMutation)))
                 }
-            """.trimIndent()
 
-            val publishResponse: HttpResponse = client.post(apiUrl) {
-                contentType(ContentType.Application.Json)
-                header("X-Shopify-Access-Token", accessToken)
-                setBody(json.encodeToString(GraphQLRequest.serializer(), GraphQLRequest(publishMutation)))
+                val publishResponseBody = publishResponse.bodyAsText()
+                println("[SHOPIFY] Publish Response: $publishResponseBody")
+            } else {
+                println("[SHOPIFY] Could not find 'Online Store' publication ID, skipping publish.")
             }
-
-            val publishResponseBody = publishResponse.bodyAsText()
-            println("[SHOPIFY] Publish Response: $publishResponseBody")
 
             val id = productId.removePrefix("gid://shopify/Product/")
             println("[SHOPIFY] Product created successfully: $productId")
@@ -321,7 +363,7 @@ class ShopifyService {
                 }
             """.trimIndent()
 
-            val apiUrl = "https://${shopDomain}/admin/api/2024-10/graphql.json"
+            val apiUrl = "https://${shopDomain}/admin/api/2025-10/graphql.json"
 
             val response: HttpResponse = client.post(apiUrl) {
                 contentType(ContentType.Application.Json)
