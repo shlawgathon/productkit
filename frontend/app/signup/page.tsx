@@ -20,9 +20,10 @@ export default function SignUpPage() {
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
+    const accessCode = formData.get("accessCode") as string;
 
     try {
-      await register({ email, password });
+      await register({ email, password, accessCode });
     } catch (err: any) {
       setError(err.message || "Failed to create account");
     } finally {
@@ -126,6 +127,20 @@ export default function SignUpPage() {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="accessCode" className="text-[#2C2A4A] font-medium">
+                Access Code
+              </Label>
+              <Input
+                id="accessCode"
+                name="accessCode"
+                type="text"
+                required
+                className="h-11 border-gray-300 focus:border-[#BAA5FF] focus:ring-[#BAA5FF]"
+                placeholder="Enter your access code"
+              />
             </div>
 
             {error && (

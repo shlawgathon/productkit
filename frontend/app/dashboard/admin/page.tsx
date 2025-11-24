@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api-client";
 
 interface AccessCode {
   _id: string;
@@ -43,15 +44,8 @@ export default function AdminPage() {
 
   const fetchCodes = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/admin/codes", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCodes(data);
-      }
+      const data = await api.getAccessCodes();
+      setCodes(data);
     } catch (error) {
       console.error("Failed to fetch codes", error);
     } finally {
@@ -62,15 +56,8 @@ export default function AdminPage() {
   const generateCode = async () => {
     setGenerating(true);
     try {
-      const res = await fetch("http://localhost:8080/api/admin/codes", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.ok) {
-        await fetchCodes();
-      }
+      await api.generateAccessCode();
+      await fetchCodes();
     } catch (error) {
       console.error("Failed to generate code", error);
     } finally {

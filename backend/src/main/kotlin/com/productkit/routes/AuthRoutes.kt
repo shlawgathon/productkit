@@ -9,137 +9,204 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.request.*
 import kotlinx.coroutines.runBlocking
 
 private val userRepo = UserRepository()
 private val accessCodeRepo = com.productkit.repositories.AccessCodeRepository()
 
-data class AuthRequest(val email: String, val password: String)
+data class AuthRequest(val email: String, val password: String, val accessCode: String)
+
 data class RefreshRequest(val refreshToken: String)
-data class RedeemRequest(val code: String)
 
 data class UpdateProfileRequest(
-    val firstName: String? = null,
-    val lastName: String? = null,
-    val bio: String? = null,
-    val profileImage: String? = null,
-    val shopifyStoreUrl: String? = null,
-    val shopifyAccessToken: String? = null
+        val firstName: String? = null,
+        val lastName: String? = null,
+        val bio: String? = null,
+        val profileImage: String? = null,
+        val shopifyStoreUrl: String? = null,
+        val shopifyAccessToken: String? = null
 )
 
 fun Routing.registerAuthRoutes() {
-    runBlocking {
-        userRepo.ensureIndexes()
-        accessCodeRepo.ensureIndexes()
-    }
-
-    route("/api/auth") {
-        post<AuthRequest>("/register") { req ->
-            if (!req.email.contains('@') || req.password.length < 6) {
-                return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid email or password"))
-            }
-            val existing = userRepo.findByEmail(req.email)
-            if (existing != null) {
-                return@post call.respond(HttpStatusCode.Conflict, mapOf("error" to "User already exists"))
-            }
-            val hash = BCrypt.withDefaults().hashToString(12, req.password.toCharArray())
-            val isFirstUser = userRepo.count() == 0L
-            val role = if (isFirstUser) com.productkit.models.UserRole.ADMIN else com.productkit.models.UserRole.USER
-            val user = userRepo.create(User(email = req.email, passwordHash = hash, role = role))
-
-            val token = JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
-            val refresh = JwtUtil.generateRefreshToken(user._id)
-            call.respond(mapOf("token" to token, "refreshToken" to refresh, "user" to user.copy(passwordHash = "")))
+        runBlocking {
+                userRepo.ensureIndexes()
+                accessCodeRepo.ensureIndexes()
         }
 
-        post<AuthRequest>("/login") { req ->
-            val user = userRepo.findByEmail(req.email)
-                ?: return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid credentials"))
-            val result = BCrypt.verifyer().verify(req.password.toCharArray(), user.passwordHash)
-            if (!result.verified) {
-                return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid credentials"))
-            }
-            val token = JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
-            val refresh = JwtUtil.generateRefreshToken(user._id)
-            call.respond(mapOf("token" to token, "refreshToken" to refresh, "user" to user.copy(passwordHash = "")))
-        }
+        route("/api/auth") {
+                post<AuthRequest>("/register") { req ->
+                        if (!req.email.contains('@') || req.password.length < 6) {
+                                return@post call.respond(
+                                        HttpStatusCode.BadRequest,
+                                        mapOf("error" to "Invalid email or password")
+                                )
+                        }
+                        val existing = userRepo.findByEmail(req.email)
+                        if (existing != null) {
+                                return@post call.respond(
+                                        HttpStatusCode.Conflict,
+                                        mapOf("error" to "User already exists")
+                                )
+                        }
 
-        post<RefreshRequest>("/refresh") { req ->
-            val decoded = try { JwtUtil.refreshVerifier.verify(req.refreshToken) } catch (e: Exception) { null }
-            if (decoded == null) {
-                return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid refresh token"))
-            }
-            val userId = decoded.subject
-            val user = userRepo.findById(userId) ?: return@post call.respond(HttpStatusCode.Unauthorized)
-            val token = JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
-            val refresh = JwtUtil.generateRefreshToken(user._id)
-            call.respond(mapOf("token" to token, "refreshToken" to refresh))
-        }
+                        // Access Code Validation
+                        val code = accessCodeRepo.findByCode(req.accessCode)
+                        if (code == null) {
+                                return@post call.respond(
+                                        HttpStatusCode.NotFound,
+                                        mapOf("error" to "Invalid access code")
+                                )
+                        }
+                        if (code.usedBy != null) {
+                                return@post call.respond(
+                                        HttpStatusCode.Conflict,
+                                        mapOf("error" to "Access code already used")
+                                )
+                        }
+                        if (System.currentTimeMillis() > code.expiresAt) {
+                                return@post call.respond(
+                                        HttpStatusCode.BadRequest,
+                                        mapOf("error" to "Access code expired")
+                                )
+                        }
 
-        post("/logout") {
-            // With stateless JWT, "logout" is a client-side operation or server-side token blacklist (not implemented)
-            call.respond(mapOf("success" to true))
-        }
+                        val hash =
+                                BCrypt.withDefaults().hashToString(12, req.password.toCharArray())
+                        val isFirstUser = userRepo.count() == 0L
+                        val role =
+                                if (isFirstUser) com.productkit.models.UserRole.ADMIN
+                                else com.productkit.models.UserRole.USER
+                        val user =
+                                userRepo.create(
+                                        User(email = req.email, passwordHash = hash, role = role)
+                                )
 
-        authenticate("auth-jwt") {
-            post<RedeemRequest>("/redeem") { req ->
-                val principal = call.principal<JWTPrincipal>()
-                val userId = principal?.subject ?: return@post call.respond(HttpStatusCode.Unauthorized)
-                
-                val code = accessCodeRepo.findByCode(req.code)
-                if (code == null) {
-                     return@post call.respond(HttpStatusCode.NotFound, mapOf("error" to "Invalid code"))
-                }
-                
-                if (code.usedBy != null) {
-                    return@post call.respond(HttpStatusCode.Conflict, mapOf("error" to "Code already used"))
-                }
+                        // Mark code as used
+                        accessCodeRepo.markAsUsed(code._id, user._id)
 
-                if (System.currentTimeMillis() > code.expiresAt) {
-                    return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Code expired"))
+                        val token =
+                                JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
+                        val refresh = JwtUtil.generateRefreshToken(user._id)
+                        call.respond(
+                                mapOf(
+                                        "token" to token,
+                                        "refreshToken" to refresh,
+                                        "user" to user.copy(passwordHash = "")
+                                )
+                        )
                 }
 
-                val success = accessCodeRepo.markAsUsed(code._id, userId)
-                if (success) {
-                    call.respond(mapOf("success" to true))
-                } else {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to redeem code"))
+                post<AuthRequest>("/login") { req ->
+                        val user =
+                                userRepo.findByEmail(req.email)
+                                        ?: return@post call.respond(
+                                                HttpStatusCode.Unauthorized,
+                                                mapOf("error" to "Invalid credentials")
+                                        )
+                        val result =
+                                BCrypt.verifyer()
+                                        .verify(req.password.toCharArray(), user.passwordHash)
+                        if (!result.verified) {
+                                return@post call.respond(
+                                        HttpStatusCode.Unauthorized,
+                                        mapOf("error" to "Invalid credentials")
+                                )
+                        }
+                        val token =
+                                JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
+                        val refresh = JwtUtil.generateRefreshToken(user._id)
+                        call.respond(
+                                mapOf(
+                                        "token" to token,
+                                        "refreshToken" to refresh,
+                                        "user" to user.copy(passwordHash = "")
+                                )
+                        )
                 }
-            }
-            get("/me") {
-                val principal = call.principal<JWTPrincipal>()
-                val userId = principal?.subject ?: return@get call.respond(HttpStatusCode.Unauthorized)
-                val user = userRepo.findById(userId) ?: return@get call.respond(HttpStatusCode.Unauthorized)
-                call.respond(user.copy(passwordHash = ""))
-            }
 
-            put<UpdateProfileRequest>("/profile") { req ->
-                val principal = call.principal<JWTPrincipal>()
-                val userId = principal?.subject ?: return@put call.respond(HttpStatusCode.Unauthorized)
-                println("Updating profile for user: $userId with data: $req")
+                post<RefreshRequest>("/refresh") { req ->
+                        val decoded =
+                                try {
+                                        JwtUtil.refreshVerifier.verify(req.refreshToken)
+                                } catch (e: Exception) {
+                                        null
+                                }
+                        if (decoded == null) {
+                                return@post call.respond(
+                                        HttpStatusCode.Unauthorized,
+                                        mapOf("error" to "Invalid refresh token")
+                                )
+                        }
+                        val userId = decoded.subject
+                        val user =
+                                userRepo.findById(userId)
+                                        ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                        val token =
+                                JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
+                        val refresh = JwtUtil.generateRefreshToken(user._id)
+                        call.respond(mapOf("token" to token, "refreshToken" to refresh))
+                }
 
-                val existing = userRepo.findById(userId) ?: return@put call.respond(HttpStatusCode.NotFound)
+                post("/logout") {
+                        // With stateless JWT, "logout" is a client-side operation or server-side
+                        // token
+                        // blacklist (not implemented)
+                        call.respond(mapOf("success" to true))
+                }
 
-                val updated = existing.copy(
-                    firstName = req.firstName ?: existing.firstName,
-                    lastName = req.lastName ?: existing.lastName,
-                    bio = req.bio ?: existing.bio,
-                    profileImage = req.profileImage ?: existing.profileImage,
-                    shopifyStoreUrl = req.shopifyStoreUrl ?: existing.shopifyStoreUrl,
-                    shopifyAccessToken = req.shopifyAccessToken ?: existing.shopifyAccessToken
-                )
-                val success = userRepo.update(updated)
-                println("Update success: $success")
-                call.respond(updated.copy(passwordHash = ""))
-            }
+                authenticate("auth-jwt") {
+                        get("/me") {
+                                val principal = call.principal<JWTPrincipal>()
+                                val userId =
+                                        principal?.subject
+                                                ?: return@get call.respond(
+                                                        HttpStatusCode.Unauthorized
+                                                )
+                                val user =
+                                        userRepo.findById(userId)
+                                                ?: return@get call.respond(
+                                                        HttpStatusCode.Unauthorized
+                                                )
+                                call.respond(user.copy(passwordHash = ""))
+                        }
 
-            get("/valid") {
-                println("VALID")
-                call.respond(mapOf("valid" to true))
-            }
+                        put<UpdateProfileRequest>("/profile") { req ->
+                                val principal = call.principal<JWTPrincipal>()
+                                val userId =
+                                        principal?.subject
+                                                ?: return@put call.respond(
+                                                        HttpStatusCode.Unauthorized
+                                                )
+                                println("Updating profile for user: $userId with data: $req")
+
+                                val existing =
+                                        userRepo.findById(userId)
+                                                ?: return@put call.respond(HttpStatusCode.NotFound)
+
+                                val updated =
+                                        existing.copy(
+                                                firstName = req.firstName ?: existing.firstName,
+                                                lastName = req.lastName ?: existing.lastName,
+                                                bio = req.bio ?: existing.bio,
+                                                profileImage = req.profileImage
+                                                                ?: existing.profileImage,
+                                                shopifyStoreUrl = req.shopifyStoreUrl
+                                                                ?: existing.shopifyStoreUrl,
+                                                shopifyAccessToken = req.shopifyAccessToken
+                                                                ?: existing.shopifyAccessToken
+                                        )
+                                val success = userRepo.update(updated)
+                                println("Update success: $success")
+                                call.respond(updated.copy(passwordHash = ""))
+                        }
+
+                        get("/valid") {
+                                println("VALID")
+                                call.respond(mapOf("valid" to true))
+                        }
+                }
         }
-    }
 }

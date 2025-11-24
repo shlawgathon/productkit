@@ -138,6 +138,17 @@ class ApiClient {
         });
     }
 
+    // Admin Access Codes
+    public async generateAccessCode() {
+        return this.request<any>('/api/admin/codes', {
+            method: 'POST'
+        });
+    }
+
+    public async getAccessCodes() {
+        return this.request<any>('/api/admin/codes');
+    }
+
     public async logout() {
         await this.request('/api/auth/logout', { method: 'POST' });
         this.clearTokens();
