@@ -15,9 +15,11 @@ import io.ktor.server.request.*
 import kotlinx.coroutines.runBlocking
 
 private val userRepo = UserRepository()
+private val accessCodeRepo = com.productkit.repositories.AccessCodeRepository()
 
 data class AuthRequest(val email: String, val password: String)
 data class RefreshRequest(val refreshToken: String)
+data class RedeemRequest(val code: String)
 
 data class UpdateProfileRequest(
     val firstName: String? = null,
@@ -31,6 +33,7 @@ data class UpdateProfileRequest(
 fun Routing.registerAuthRoutes() {
     runBlocking {
         userRepo.ensureIndexes()
+        accessCodeRepo.ensureIndexes()
     }
 
     route("/api/auth") {
@@ -43,9 +46,11 @@ fun Routing.registerAuthRoutes() {
                 return@post call.respond(HttpStatusCode.Conflict, mapOf("error" to "User already exists"))
             }
             val hash = BCrypt.withDefaults().hashToString(12, req.password.toCharArray())
-            val user = userRepo.create(User(email = req.email, passwordHash = hash))
+            val isFirstUser = userRepo.count() == 0L
+            val role = if (isFirstUser) com.productkit.models.UserRole.ADMIN else com.productkit.models.UserRole.USER
+            val user = userRepo.create(User(email = req.email, passwordHash = hash, role = role))
 
-            val token = JwtUtil.generateAccessToken(user._id, user.email)
+            val token = JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
             val refresh = JwtUtil.generateRefreshToken(user._id)
             call.respond(mapOf("token" to token, "refreshToken" to refresh, "user" to user.copy(passwordHash = "")))
         }
@@ -57,7 +62,7 @@ fun Routing.registerAuthRoutes() {
             if (!result.verified) {
                 return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid credentials"))
             }
-            val token = JwtUtil.generateAccessToken(user._id, user.email)
+            val token = JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
             val refresh = JwtUtil.generateRefreshToken(user._id)
             call.respond(mapOf("token" to token, "refreshToken" to refresh, "user" to user.copy(passwordHash = "")))
         }
@@ -69,7 +74,7 @@ fun Routing.registerAuthRoutes() {
             }
             val userId = decoded.subject
             val user = userRepo.findById(userId) ?: return@post call.respond(HttpStatusCode.Unauthorized)
-            val token = JwtUtil.generateAccessToken(user._id, user.email)
+            val token = JwtUtil.generateAccessToken(user._id, user.email, user.role.name)
             val refresh = JwtUtil.generateRefreshToken(user._id)
             call.respond(mapOf("token" to token, "refreshToken" to refresh))
         }
@@ -80,6 +85,30 @@ fun Routing.registerAuthRoutes() {
         }
 
         authenticate("auth-jwt") {
+            post<RedeemRequest>("/redeem") { req ->
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.subject ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                
+                val code = accessCodeRepo.findByCode(req.code)
+                if (code == null) {
+                     return@post call.respond(HttpStatusCode.NotFound, mapOf("error" to "Invalid code"))
+                }
+                
+                if (code.usedBy != null) {
+                    return@post call.respond(HttpStatusCode.Conflict, mapOf("error" to "Code already used"))
+                }
+
+                if (System.currentTimeMillis() > code.expiresAt) {
+                    return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Code expired"))
+                }
+
+                val success = accessCodeRepo.markAsUsed(code._id, userId)
+                if (success) {
+                    call.respond(mapOf("success" to true))
+                } else {
+                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to redeem code"))
+                }
+            }
             get("/me") {
                 val principal = call.principal<JWTPrincipal>()
                 val userId = principal?.subject ?: return@get call.respond(HttpStatusCode.Unauthorized)

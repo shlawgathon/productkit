@@ -7,6 +7,7 @@ data class User(
     val _id: String = ObjectId().toString(),
     val email: String,
     val passwordHash: String,
+    val role: UserRole = UserRole.USER,
     val shopifyStoreUrl: String? = null,
     val shopifyAccessToken: String? = null,
     val firstName: String? = null,
@@ -14,6 +15,21 @@ data class User(
     val bio: String? = null,
     val profileImage: String? = null,
     val createdAt: Long = System.currentTimeMillis()
+)
+
+enum class UserRole {
+    USER,
+    ADMIN
+}
+
+data class AccessCode(
+    val _id: String = ObjectId().toString(),
+    val code: String,
+    val createdBy: String, // Admin User ID
+    val createdAt: Long = System.currentTimeMillis(),
+    val expiresAt: Long,
+    val usedBy: String? = null,
+    val usedAt: Long? = null
 )
 
 data class Product(

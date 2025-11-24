@@ -76,6 +76,7 @@ fun Application.module() {
     routing {
         registerHealthRoutes()
         registerAuthRoutes()
+        registerAdminRoutes()
         authenticate("auth-jwt") {
             rateLimit(RateLimitName("per-user")) {
                 route("/") {

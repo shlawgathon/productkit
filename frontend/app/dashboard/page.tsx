@@ -16,6 +16,9 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+  const { token } = useAuth();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -140,6 +143,33 @@ export default function DashboardPage() {
     setSortOrder(prev => prev === "asc" ? "desc" : "asc");
   };
 
+  const handleRedeem = async () => {
+    if (!redeemCode.trim()) return;
+    setRedeeming(true);
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/redeem", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: redeemCode }),
+      });
+      if (res.ok) {
+        alert("Code redeemed successfully!");
+        setRedeemCode("");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to redeem code");
+      }
+    } catch (error) {
+      console.error("Failed to redeem code", error);
+      alert("An error occurred");
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="p-8 text-center">Loading products...</div>;
   }
@@ -152,6 +182,18 @@ export default function DashboardPage() {
           <p className="text-muted-foreground mt-1">
             View all your registered products here.
           </p>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Enter Access Code"
+            value={redeemCode}
+            onChange={(e) => setRedeemCode(e.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <Button onClick={handleRedeem} disabled={redeeming || !redeemCode}>
+            {redeeming ? "Redeeming..." : "Redeem Code"}
+          </Button>
         </div>
       </div>
 

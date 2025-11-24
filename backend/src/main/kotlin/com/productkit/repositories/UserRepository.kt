@@ -26,4 +26,8 @@ class UserRepository {
         // Unique index on email
         col.ensureUniqueIndex(User::email)
     }
+
+    suspend fun count(): Long {
+        return col.countDocuments()
+    }
 }
