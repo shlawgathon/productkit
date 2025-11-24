@@ -12,12 +12,13 @@ object JwtUtil {
     val accessVerifier: JWTVerifier = JWT.require(accessAlg).withIssuer("productkit").build()
     val refreshVerifier: JWTVerifier = JWT.require(refreshAlg).withIssuer("productkit").build()
 
-    fun generateAccessToken(userId: String, email: String): String {
+    fun generateAccessToken(userId: String, email: String, role: String): String {
         val now = System.currentTimeMillis()
         return JWT.create()
             .withIssuer("productkit")
             .withSubject(userId)
             .withClaim("email", email)
+            .withClaim("role", role)
             .withIssuedAt(Date(now))
             .withExpiresAt(Date(now + Config.ACCESS_TOKEN_TTL_MS))
             .sign(accessAlg)

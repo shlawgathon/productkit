@@ -140,6 +140,8 @@ export default function DashboardPage() {
     setSortOrder(prev => prev === "asc" ? "desc" : "asc");
   };
 
+
+
   if (isLoading) {
     return <div className="p-8 text-center">Loading products...</div>;
   }

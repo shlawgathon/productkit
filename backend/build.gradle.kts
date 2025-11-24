@@ -86,3 +86,10 @@ ktor {
         archiveFileName.set("productkit.jar")
     }
 }
+
+tasks.register<JavaExec>("runSeed") {
+    group = "application"
+    description = "Generates an initial access code"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.productkit.scripts.SeedInitialCodeKt")
+}

@@ -8,6 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 interface User {
     _id: string;
     email: string;
+    role?: string;
     firstName?: string;
     lastName?: string;
     profileImage?: string;
@@ -18,6 +19,7 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
+    token: string | null;
     isLoading: boolean;
     login: (credentials: any) => Promise<void>;
     register: (credentials: any) => Promise<void>;
@@ -29,15 +31,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
         const initAuth = async () => {
-            const token = localStorage.getItem('accessToken');
+            const storedToken = localStorage.getItem('accessToken');
+            setToken(storedToken);
 
-            if (token) {
+            if (storedToken) {
                 try {
                     // Validate token and get user info
                     await api.checkValid();
@@ -49,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                     api.clearTokens();
                     setUser(null);
+                    setToken(null);
                     localStorage.removeItem('user');
                     if (pathname !== '/login' && pathname !== '/signup') {
                         router.push('/login');
@@ -66,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const response = await api.login(credentials);
             api.setTokens(response.token, response.refreshToken);
             setUser(response.user);
+            setToken(response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
             router.push('/dashboard');
         } catch (error) {
@@ -78,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const response = await api.register(credentials);
             api.setTokens(response.token, response.refreshToken);
             setUser(response.user);
+            setToken(response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
             router.push('/dashboard/onboarding');
         } catch (error) {
@@ -93,12 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         api.clearTokens();
         setUser(null);
+        setToken(null);
         localStorage.removeItem('user');
         router.push('/login');
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser: setUser }}>
+        <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, updateUser: setUser }}>
             {children}
         </AuthContext.Provider>
     );

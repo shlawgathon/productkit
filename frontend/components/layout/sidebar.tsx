@@ -61,9 +61,31 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar() {
+import { useAuth } from "@/components/auth-provider";
+
+interface SidebarProps {
+  className?: string;
+}
+
+export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { user } = useAuth();
+
+  const adminSection = {
+    title: "Admin",
+    items: [
+      {
+        title: "Dashboard",
+        href: "/dashboard/admin",
+        icon: Users,
+      },
+    ],
+  };
+
+  const sections = user?.role === "ADMIN" 
+    ? [...navSections, adminSection]
+    : navSections;
 
   return (
     <aside
@@ -83,7 +105,7 @@ export function Sidebar() {
 
         {/* Navigation Sections */}
         <nav className="flex-1 space-y-6 px-3">
-          {navSections.map((section, sectionIdx) => (
+          {sections.map((section, sectionIdx) => (
             <div key={sectionIdx}>
               {section.title && !isCollapsed && (
                 <div
