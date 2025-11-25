@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/components/auth/auth-provider";
+import { useAuth } from "@/components/auth-provider";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
@@ -25,6 +25,9 @@ interface AccessCode {
   expiresAt: number;
   usedBy?: string;
   usedAt?: number;
+  userFullName?: string;
+  userProfileImage?: string;
+  userEmail?: string;
 }
 
 export default function AdminPage() {
@@ -112,7 +115,7 @@ export default function AdminPage() {
                 {codes.map((code) => {
                   const isExpired = Date.now() > code.expiresAt;
                   const isUsed = !!code.usedBy;
-                  
+
                   return (
                     <TableRow key={code._id}>
                       <TableCell className="font-mono font-medium">
@@ -134,7 +137,32 @@ export default function AdminPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {code.usedBy || "-"}
+                        {code.usedBy ? (
+                          <div className="flex items-center gap-2">
+                            {code.userProfileImage ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={code.userProfileImage}
+                                className="w-8 h-8 rounded-full object-cover"
+                                alt={code.userFullName || "User"}
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                                {(code.userFullName?.[0] || code.userEmail?.[0] || "?").toUpperCase()}
+                              </div>
+                            )}
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-foreground">
+                                {code.userFullName || "Unknown User"}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {code.userEmail}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                     </TableRow>
                   );

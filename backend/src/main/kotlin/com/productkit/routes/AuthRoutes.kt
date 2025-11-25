@@ -17,7 +17,7 @@ import kotlinx.coroutines.runBlocking
 private val userRepo = UserRepository()
 private val accessCodeRepo = com.productkit.repositories.AccessCodeRepository()
 
-data class AuthRequest(val email: String, val password: String, val accessCode: String)
+data class AuthRequest(val email: String, val password: String, val accessCode: String? = null)
 
 data class RefreshRequest(val refreshToken: String)
 
@@ -53,8 +53,8 @@ fun Routing.registerAuthRoutes() {
                         }
 
                         // Access Code Validation
-                        val code = accessCodeRepo.findByCode(req.accessCode)
-                        if (code == null) {
+                        val code = req.accessCode?.let { accessCodeRepo.findByCode(it) }
+                        if (code == null || req.accessCode == null) {
                                 return@post call.respond(
                                         HttpStatusCode.NotFound,
                                         mapOf("error" to "Invalid access code")
