@@ -182,9 +182,32 @@ export default function SignUpPage() {
             <input type="hidden" name="accessCode" value={code.join("")} />
           </div>
 
-          {error && (
-            <div className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
-              {error}
+            <div className="space-y-2">
+              <Label htmlFor="accessCode" className="text-[#2C2A4A] font-medium">
+                Access Code
+              </Label>
+              <Input
+                id="accessCode"
+                name="accessCode"
+                type="text"
+                required
+                className="h-11 border-gray-300 focus:border-[#BAA5FF] focus:ring-[#BAA5FF]"
+                placeholder="Enter your access code"
+              />
+              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                <p>To get an access code, please Connect with Subham or Jerry and DM them, or email:</p>
+                <p>
+                  <a href="mailto:jerry.x0930@gmail.com" className="text-[#2C2A4A] hover:text-[#BAA5FF] transition-colors">jerry.x0930@gmail.com</a>
+                  {" or "}
+                  <a href="mailto:subhamktech@gmail.com" className="text-[#2C2A4A] hover:text-[#BAA5FF] transition-colors">subhamktech@gmail.com</a>
+                </p>
+                <p>
+                  LinkedIn:{" "}
+                  <a href="https://linkedin.com/in/xiaojerry" target="_blank" rel="noopener noreferrer" className="text-[#2C2A4A] hover:text-[#BAA5FF] transition-colors">in/xiaojerry</a>
+                  {" and "}
+                  <a href="https://linkedin.com/in/subhamkts" target="_blank" rel="noopener noreferrer" className="text-[#2C2A4A] hover:text-[#BAA5FF] transition-colors">in/subhamkts</a>
+                </p>
+              </div>
             </div>
           )}
 
