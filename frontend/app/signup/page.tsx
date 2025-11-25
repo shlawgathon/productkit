@@ -209,7 +209,7 @@ export default function SignUpPage() {
                 </p>
               </div>
             </div>
-          )}
+          )
 
           <Button
             type="submit"
