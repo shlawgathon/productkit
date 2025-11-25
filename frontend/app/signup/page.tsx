@@ -142,7 +142,7 @@ export default function SignUpPage() {
                 placeholder="Enter your access code"
               />
               <div className="text-xs text-gray-500 mt-2 space-y-1">
-                <p>To get an access code, please Connect with Subham or Jerry and DM them, or email:</p>
+                <p>To get an one time use access code, please Connect with Subham or Jerry and DM them, or email (this will be a one time thing for account creation):</p>
                 <p>
                   <a href="mailto:jerry.x0930@gmail.com" className="text-[#2C2A4A] hover:text-[#BAA5FF] transition-colors">jerry.x0930@gmail.com</a>
                   {" or "}
